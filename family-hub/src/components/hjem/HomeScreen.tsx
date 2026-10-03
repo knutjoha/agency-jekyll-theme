@@ -2,6 +2,7 @@
 
 import { dinner, people, soon } from "@/data/fixture";
 import { DinnerTile } from "@/components/hjem/DinnerTile";
+import { HomeMobile } from "@/components/hjem/HomeMobile";
 import { SoonTile } from "@/components/hjem/SoonTile";
 import { TodayTile } from "@/components/hjem/TodayTile";
 import { WeatherTile } from "@/components/hjem/WeatherTile";
@@ -11,7 +12,10 @@ import { meteogramNowHour } from "@/lib/oslo";
 
 export function HomeScreen(props: HallwayData) {
   return (
-    <HallwayPage {...props}>
+    <HallwayPage
+      {...props}
+      mobile={(clock, weather) => <HomeMobile clock={clock} weather={weather} />}
+    >
       {(clock, weather) => (
         <div
           style={{
