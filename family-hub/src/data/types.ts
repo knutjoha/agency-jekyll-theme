@@ -63,5 +63,5 @@ export type WeatherView = {
   precipLabel: string;
   slots: MeteogramSlot[];
   attribution: string;
-  source: "met" | "fixture";
+  source: "yr" | "fixture";
 };

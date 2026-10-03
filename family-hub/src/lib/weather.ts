@@ -2,11 +2,12 @@ import { ATTRIBUTION, fixtureWeather } from "@/data/fixture";
 import type { MeteogramSlot, WeatherSymbol, WeatherView } from "@/data/types";
 import { osloDateKey, osloParts } from "@/lib/oslo";
 
-/** Åsveien 34D, 1369 Stabekk. Geocoded once from OpenStreetMap place 8123275929. */
-export const HOME_LAT = 59.9102;
-export const HOME_LON = 10.6083;
+const YR_ORIGIN = "https://www.yr.no";
 
-export const MET_USER_AGENT =
+/** Yr location search. Stabekk is resolved from this response, not hardcoded. */
+export const STABEKK_SEARCH_URL = `${YR_ORIGIN}/api/v0/locations/search?q=${encodeURIComponent("Stabekk")}&language=nb`;
+
+export const YR_USER_AGENT =
   "FamilyHub/1.0 (+https://github.com/knutjoha/agency-jekyll-theme)";
 
 const SLOT_HOURS = [8, 10, 12, 14, 16, 18, 20, 22];
@@ -117,7 +118,7 @@ export function buildWeather(series: MetSeries[], now: Date): WeatherView {
   }
 
   if (points.length === 0) {
-    throw new Error("MET returned no temperatures for today in Oslo");
+    throw new Error("Yr returned no temperatures for today in Stabekk");
   }
 
   const current =
@@ -167,13 +168,85 @@ export function buildWeather(series: MetSeries[], now: Date): WeatherView {
         : "0 mm",
     slots,
     attribution: ATTRIBUTION,
-    source: "met",
+    source: "yr",
   };
 }
+
+type YrLocation = {
+  name?: string;
+  category?: { id?: string };
+  subregion?: { name?: string };
+  _links?: { forecast?: { href?: string } };
+};
+
+type YrShortInterval = {
+  start?: string;
+  symbolCode?: { next1Hour?: string; next6Hours?: string };
+  precipitation?: { value?: number };
+  temperature?: { value?: number };
+};
+
+type YrForecast = {
+  shortIntervals?: YrShortInterval[];
+};
 
 function remember(view: WeatherView, expiresAt: number): WeatherView {
   cache = { expiresAt, view };
   return view;
+}
+
+/** The populated place in Bærum, not the bridge or other places also named Stabekk. */
+export function resolveStabekk(locations: YrLocation[]): YrLocation {
+  const inBaerum = locations.filter(
+    (location) => location.name === "Stabekk" && location.subregion?.name === "Bærum",
+  );
+  const place = inBaerum.find((location) => location.category?.id === "CH09") ?? inBaerum[0];
+  if (!place) {
+    throw new Error("Yr did not resolve Stabekk");
+  }
+  return place;
+}
+
+export function stabekkForecastUrl(location: YrLocation): string {
+  const href = location._links?.forecast?.href ?? "";
+  if (!href.startsWith("/api/v0/locations/") || !href.endsWith("/forecast")) {
+    throw new Error("Yr location is missing a forecast link");
+  }
+  return `${YR_ORIGIN}${href}`;
+}
+
+function toSeries(intervals: YrShortInterval[]): MetSeries[] {
+  return intervals.flatMap((interval) => {
+    if (!interval.start || typeof interval.temperature?.value !== "number") return [];
+    return [
+      {
+        time: interval.start,
+        data: {
+          instant: { details: { air_temperature: interval.temperature.value } },
+          next_1_hours: {
+            summary: { symbol_code: interval.symbolCode?.next1Hour },
+            details: { precipitation_amount: interval.precipitation?.value ?? 0 },
+          },
+          next_6_hours: { summary: { symbol_code: interval.symbolCode?.next6Hours } },
+        },
+      },
+    ];
+  });
+}
+
+async function yrJson<T>(url: string): Promise<{ payload: T; expiresAt: number }> {
+  const response = await fetch(url, {
+    headers: { "User-Agent": YR_USER_AGENT, Accept: "application/json" },
+    cache: "no-store",
+  });
+  if (!response.ok) {
+    throw new Error(`Yr responded ${response.status}`);
+  }
+  const expiresHeader = Date.parse(response.headers.get("expires") ?? "");
+  return {
+    payload: (await response.json()) as T,
+    expiresAt: Number.isFinite(expiresHeader) ? expiresHeader : Date.now() + 30 * 60 * 1000,
+  };
 }
 
 export async function getWeather(now = new Date()): Promise<{ view: WeatherView; maxAge: number }> {
@@ -186,24 +259,14 @@ export async function getWeather(now = new Date()): Promise<{ view: WeatherView;
   }
 
   try {
-    const url = `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${HOME_LAT}&lon=${HOME_LON}`;
-    const response = await fetch(url, {
-      headers: { "User-Agent": MET_USER_AGENT },
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      throw new Error(`MET responded ${response.status}`);
-    }
-    const payload = (await response.json()) as { properties?: { timeseries?: MetSeries[] } };
-    const view = buildWeather(payload.properties?.timeseries ?? [], now);
-    const expiresHeader = Date.parse(response.headers.get("expires") ?? "");
-    const expiresAt = Number.isFinite(expiresHeader)
-      ? expiresHeader
-      : timestamp + 30 * 60 * 1000;
-    remember(view, expiresAt);
+    const search = await yrJson<{ _embedded?: { location?: YrLocation[] } }>(STABEKK_SEARCH_URL);
+    const place = resolveStabekk(search.payload._embedded?.location ?? []);
+    const forecast = await yrJson<YrForecast>(stabekkForecastUrl(place));
+    const view = buildWeather(toSeries(forecast.payload.shortIntervals ?? []), now);
+    remember(view, forecast.expiresAt);
     return {
       view,
-      maxAge: Math.max(1, Math.round((expiresAt - Date.now()) / 1000)),
+      maxAge: Math.max(1, Math.round((forecast.expiresAt - Date.now()) / 1000)),
     };
   } catch {
     const expiresAt = timestamp + 60 * 1000;
