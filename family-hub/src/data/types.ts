@@ -78,6 +78,47 @@ export type TodoLane = {
   tasks: TodoTask[];
 };
 
+export type Meal = {
+  id: string;
+  title: string;
+  diets: string[];
+  minutes: number;
+  editing?: boolean;
+};
+
+export type MenuDay = {
+  id: string;
+  weekday: string;
+  date: string;
+  meal: Meal | null;
+};
+
+export type GroceryItem = {
+  id: string;
+  name: string;
+  quantity: string;
+  done?: boolean;
+};
+
+export type GroceryAisle = {
+  id: string;
+  label: string;
+  items: GroceryItem[];
+};
+
+export type DinnerMenu = {
+  startsOn: { year: number; month: number; day: number };
+  period: string;
+  days: MenuDay[];
+  aisles: GroceryAisle[];
+};
+
+export type StagedDrag = {
+  fromDayId: string;
+  targetDayId: string;
+  meal: Meal;
+};
+
 export type WeatherSymbol =
   | "cloud-rain"
   | "cloud-drizzle"

@@ -1,5 +1,13 @@
-import { PlaceholderPage } from "@/components/placeholder/PlaceholderPage";
+import { MiddagScreen } from "@/components/middag/MiddagScreen";
+import { loadHallway } from "@/lib/hallway";
 
-export default function MiddagPage() {
-  return <PlaceholderPage title="Middag" message="Middagsplanen er ikke bygget ennå." />;
+export const dynamic = "force-dynamic";
+
+export default async function MiddagPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ snapshot?: string | string[] }>;
+}) {
+  const hallway = await loadHallway(searchParams);
+  return <MiddagScreen {...hallway} />;
 }
