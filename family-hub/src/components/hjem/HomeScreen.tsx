@@ -1,15 +1,18 @@
 "use client";
 
-import { dinner, people, soon } from "@/data/fixture";
+import { dinner, soon } from "@/data/fixture";
 import { DinnerTile } from "@/components/hjem/DinnerTile";
 import { SoonTile } from "@/components/hjem/SoonTile";
 import { TodayTile } from "@/components/hjem/TodayTile";
 import { WeatherTile } from "@/components/hjem/WeatherTile";
 import { HallwayPage } from "@/components/shell/HallwayPage";
 import type { HallwayData } from "@/lib/hallway";
+import { useCalendar } from "@/lib/use-calendar";
 import { meteogramNowHour } from "@/lib/oslo";
 
 export function HomeScreen(props: HallwayData) {
+  const calendar = useCalendar(props.snapshot, props.initialCalendar, null);
+
   return (
     <HallwayPage {...props}>
       {(clock, weather) => (
@@ -31,7 +34,7 @@ export function HomeScreen(props: HallwayData) {
               gap: 20,
             }}
           >
-            <TodayTile people={people} numericDate={clock.numericDate} />
+            <TodayTile people={calendar.todayPeople} numericDate={clock.numericDate} source={calendar.source} />
             <WeatherTile weather={weather} nowHour={meteogramNowHour(clock.hour)} />
           </div>
           <div

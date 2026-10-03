@@ -80,8 +80,8 @@ export function PersonRow({ person }: { person: Person }) {
           gap: 10,
         }}
       >
-        {person.events.map((event) => (
-          <EventChip key={`${event.time ?? "none"}-${event.title}`} event={event} />
+        {person.events.map((event, index) => (
+          <EventChip key={`${event.time ?? "none"}-${event.title}-${index}`} event={event} />
         ))}
       </div>
       <div

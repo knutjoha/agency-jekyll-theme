@@ -61,6 +61,14 @@ export type CalendarWeek = {
   rows: CalendarRow[];
 };
 
+export type CalendarSource = "google" | "fixture";
+
+export type CalendarPayload = {
+  source: CalendarSource;
+  todayPeople: Person[];
+  week: CalendarWeek;
+};
+
 export type TodoFilter = "alle" | "frist" | "fullfort";
 
 export type TodoTask = {

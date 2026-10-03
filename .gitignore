@@ -1,5 +1,10 @@
 _site
 
+# Server secrets. Never commit a Google client, refresh token, or service-account key.
+.env
+client_secret*.json
+*-credentials.json
+
 # Windows image file caches
 Thumbs.db
 ehthumbs.db
