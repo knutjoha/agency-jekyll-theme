@@ -1,0 +1,55 @@
+/* Family Hub – design tokens (hallway iPad view) */
+@import url('https://fonts.googleapis.com/css2?family=Funnel+Sans:wght@300..800&family=Geist+Mono:wght@100..900&family=Inter:wght@100..900&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* surfaces */
+  --bg: #0D0E10;          /* page ground, visible in the gaps between tiles */
+  --tile: #16181B;        /* tile surface + nav rail */
+  --tile-2: #1E2126;      /* nested element inside a tile */
+  --tile-3: #101214;      /* deepest nesting: chips, pills */
+  --cream: #FFF5EB;       /* single high-contrast tile per view */
+  --ink: #121212;         /* text on cream/accent */
+  --ink-2: #4A4440;       /* secondary text on cream */
+
+  /* text */
+  --text: #F7F7F5;
+  --text-2: #AFB5BD;
+  --text-muted: #7C838D;
+
+  /* status */
+  --accent: #FF9F43;      /* attention only – max 3-4 uses per view */
+  --warn-bg: #3A2411;
+  --ok: #5BC98A;
+  --rain: #4EA8F5;        /* meteogram precipitation bars */
+
+  /* per-person identity colours */
+  --p-knut: #5AA2F7;
+  --p-ulla: #C792EA;
+  --p-amelia: #FF8A65;
+  --p-hedda: #4DD4AC;
+  --p-maja: #FFD166;
+
+  /* type */
+  --font-heading: 'Funnel Sans', sans-serif;  /* titles, names */
+  --font-body: 'Inter', sans-serif;           /* labels, descriptions */
+  --font-data: 'Geist Mono', monospace;       /* all times, dates, temperatures */
+
+  /* shape */
+  --r-tile: 16px;   /* tiles, nav rail items */
+  --r-nested: 12px; /* nested elements */
+  --r-full: 9999px; /* pills, avatars, status dots */
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
