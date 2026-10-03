@@ -1,5 +1,13 @@
-import { PlaceholderPage } from "@/components/placeholder/PlaceholderPage";
+import { TodoScreen } from "@/components/todo/TodoScreen";
+import { loadHallway } from "@/lib/hallway";
 
-export default function TodoPage() {
-  return <PlaceholderPage title="Todo" message="Todo er ikke bygget ennå." />;
+export const dynamic = "force-dynamic";
+
+export default async function TodoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ snapshot?: string | string[] }>;
+}) {
+  const hallway = await loadHallway(searchParams);
+  return <TodoScreen {...hallway} />;
 }

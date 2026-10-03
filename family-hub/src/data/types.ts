@@ -61,6 +61,23 @@ export type CalendarWeek = {
   rows: CalendarRow[];
 };
 
+export type TodoFilter = "alle" | "frist" | "fullfort";
+
+export type TodoTask = {
+  id: string;
+  title: string;
+  due?: string;
+  done?: boolean;
+  overdue?: boolean;
+  editing?: boolean;
+};
+
+export type TodoLane = {
+  personId: PersonId;
+  detail: string;
+  tasks: TodoTask[];
+};
+
 export type WeatherSymbol =
   | "cloud-rain"
   | "cloud-drizzle"
