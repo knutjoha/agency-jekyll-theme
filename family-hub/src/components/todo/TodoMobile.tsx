@@ -4,18 +4,11 @@ import { useRef, useState } from "react";
 import { Calendar, Check, Plus, TriangleAlert } from "lucide-react";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { people } from "@/data/fixture";
-import { todoLanes } from "@/data/todo";
 import type { Person, PersonId, TodoLane, TodoTask, WeatherView } from "@/data/types";
+import { writeJson } from "@/lib/persist-client";
 import type { OsloNow } from "@/lib/oslo";
 
 const PHONE_EDIT_ID = "knut-dekk";
-
-function phoneLanes(): TodoLane[] {
-  return todoLanes.map((lane) => ({
-    ...lane,
-    tasks: lane.tasks.map((task) => ({ ...task, editing: task.id === PHONE_EDIT_ID })),
-  }));
-}
 
 function personFor(id: PersonId): Person {
   const person = people.find((entry) => entry.id === id);
@@ -31,12 +24,29 @@ function openCount(tasks: TodoTask[]): number {
   return tasks.filter((task) => !task.done).length;
 }
 
-export function TodoMobile({ clock, weather }: { clock: OsloNow; weather: WeatherView }) {
-  const [lanes, setLanes] = useState(phoneLanes);
+export function TodoMobile({
+  clock,
+  weather,
+  lanes: initialLanes,
+  persisted,
+}: {
+  clock: OsloNow;
+  weather: WeatherView;
+  lanes: TodoLane[];
+  persisted: boolean;
+}) {
+  const [lanes, setLanes] = useState<TodoLane[]>(() =>
+    initialLanes.map((lane) => ({
+      ...lane,
+      tasks: lane.tasks.map((task) => ({
+        ...task,
+        editing: persisted ? false : task.id === PHONE_EDIT_ID,
+      })),
+    })),
+  );
   const [selectedId, setSelectedId] = useState<PersonId>("knut");
   const [drafts, setDrafts] = useState<Partial<Record<PersonId, string>>>({});
-  const originals = useRef(new Map(todoLanes.flatMap((lane) => lane.tasks.map((task) => [task.id, task.title]))));
-  const nextId = useRef(1);
+  const originals = useRef(new Map(initialLanes.flatMap((lane) => lane.tasks.map((task) => [task.id, task.title]))));
 
   const selected = lanes.find((lane) => lane.personId === selectedId) ?? lanes[0];
   const person = personFor(selected.personId);
@@ -53,14 +63,25 @@ export function TodoMobile({ clock, weather }: { clock: OsloNow; weather: Weathe
   }
 
   function toggleTask(id: string) {
+    const task = lanes.flatMap((lane) => lane.tasks).find((entry) => entry.id === id);
+    if (!task) return;
+    const done = !task.done;
     setLanes((current) =>
       current.map((lane) => ({
         ...lane,
-        tasks: lane.tasks.map((task) =>
-          task.id === id ? { ...task, done: !task.done, editing: false } : task,
-        ),
+        tasks: lane.tasks.map((entry) => (entry.id === id ? { ...entry, done, editing: false } : entry)),
       })),
     );
+    if (!persisted) return;
+    void writeJson("/api/todos", "PATCH", { id, done }).then((ok) => {
+      if (ok) return;
+      setLanes((current) =>
+        current.map((lane) => ({
+          ...lane,
+          tasks: lane.tasks.map((entry) => (entry.id === id && entry.done === done ? { ...entry, done: !done } : entry)),
+        })),
+      );
+    });
   }
 
   function cancelEdit(id: string) {
@@ -73,8 +94,15 @@ export function TodoMobile({ clock, weather }: { clock: OsloNow; weather: Weathe
       cancelEdit(task.id);
       return;
     }
+    const previous = originals.current.get(task.id) ?? title;
     originals.current.set(task.id, title);
     updateTask(task.id, { editing: false, title });
+    if (!persisted) return;
+    void writeJson("/api/todos", "PATCH", { id: task.id, title }).then((ok) => {
+      if (ok) return;
+      originals.current.set(task.id, previous);
+      updateTask(task.id, { title: previous });
+    });
   }
 
   function beginDraft(personId: PersonId) {
@@ -103,12 +131,22 @@ export function TodoMobile({ clock, weather }: { clock: OsloNow; weather: Weathe
       cancelDraft(personId);
       return;
     }
-    const task: TodoTask = { id: `${personId}-ny-${nextId.current++}`, title };
+    const task: TodoTask = { id: crypto.randomUUID(), title };
     originals.current.set(task.id, title);
     setLanes((current) =>
       current.map((lane) => (lane.personId === personId ? { ...lane, tasks: [...lane.tasks, task] } : lane)),
     );
     cancelDraft(personId);
+    if (!persisted) return;
+    void writeJson("/api/todos", "POST", { id: task.id, personId, title }).then((ok) => {
+      if (ok) return;
+      setLanes((current) =>
+        current.map((lane) => ({
+          ...lane,
+          tasks: lane.tasks.filter((entry) => entry.id !== task.id),
+        })),
+      );
+    });
   }
 
   return (
