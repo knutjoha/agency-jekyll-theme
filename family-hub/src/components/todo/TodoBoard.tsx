@@ -130,7 +130,7 @@ export function TodoBoard() {
               margin: 0,
               fontFamily: "var(--font-heading)",
               fontSize: 24,
-              lineHeight: 1,
+              lineHeight: "normal",
               fontWeight: 400,
               color: "var(--text)",
               whiteSpace: "nowrap",
@@ -142,7 +142,7 @@ export function TodoBoard() {
             style={{
               fontFamily: "var(--font-body)",
               fontSize: 15,
-              lineHeight: 1,
+              lineHeight: "normal",
               fontWeight: 400,
               color: "var(--text-muted)",
               whiteSpace: "nowrap",
@@ -170,7 +170,7 @@ export function TodoBoard() {
                   outlineOffset: active ? undefined : -0.5,
                   fontFamily: "var(--font-body)",
                   fontSize: 14,
-                  lineHeight: 1,
+                  lineHeight: "normal",
                   fontWeight: 400,
                   color: active ? "var(--text)" : "var(--text-muted)",
                   whiteSpace: "nowrap",
@@ -249,10 +249,10 @@ export function TodoBoard() {
                 <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
                   <div
                     style={{
-                      fontFamily: "var(--font-heading)",
-                      fontSize: 17,
-                      lineHeight: 1,
-                      fontWeight: 400,
+                    fontFamily: "var(--font-heading)",
+                    fontSize: 17,
+                    lineHeight: "normal",
+                    fontWeight: 400,
                       color: "var(--text)",
                     }}
                   >
@@ -262,7 +262,7 @@ export function TodoBoard() {
                     style={{
                       fontFamily: "var(--font-body)",
                       fontSize: 12,
-                      lineHeight: 1,
+                      lineHeight: "normal",
                       fontWeight: 400,
                       color: "var(--text-muted)",
                       whiteSpace: "nowrap",
@@ -392,7 +392,7 @@ function TaskCard({
               minWidth: 0,
               fontFamily: "var(--font-body)",
               fontSize: 14,
-              lineHeight: 1.2,
+              lineHeight: "normal",
               fontWeight: 400,
               color: task.done ? "var(--text-muted)" : "var(--text)",
               textDecoration: task.done ? "line-through" : "none",
@@ -578,7 +578,7 @@ function DueRow({ due, overdue }: { due: string; overdue: boolean }) {
           minWidth: 0,
           fontFamily: "var(--font-body)",
           fontSize: 12,
-          lineHeight: 1.2,
+          lineHeight: "normal",
           fontWeight: 400,
           color,
         }}
@@ -596,7 +596,7 @@ const pillBase = {
   cursor: "pointer",
   fontFamily: "var(--font-body)",
   fontSize: 13,
-  lineHeight: 1,
+  lineHeight: "normal",
   fontWeight: 400,
   whiteSpace: "nowrap" as const,
 };
