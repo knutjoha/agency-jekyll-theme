@@ -1,6 +1,5 @@
 import { HomeScreen } from "@/components/hjem/HomeScreen";
-import { fixtureWeather } from "@/data/fixture";
-import { getWeather } from "@/lib/weather";
+import { loadHallway } from "@/lib/hallway";
 
 export const dynamic = "force-dynamic";
 
@@ -9,15 +8,6 @@ export default async function Page({
 }: {
   searchParams: Promise<{ snapshot?: string | string[] }>;
 }) {
-  const params = await searchParams;
-  const snapshot = params.snapshot === "1";
-  const weather = snapshot ? fixtureWeather : (await getWeather()).view;
-
-  return (
-    <HomeScreen
-      snapshot={snapshot}
-      initialWeather={weather}
-      initialNow={new Date().toISOString()}
-    />
-  );
+  const hallway = await loadHallway(searchParams);
+  return <HomeScreen {...hallway} />;
 }

@@ -1,5 +1,13 @@
-import { PlaceholderPage } from "@/components/placeholder/PlaceholderPage";
+import { KalenderScreen } from "@/components/kalender/KalenderScreen";
+import { loadHallway } from "@/lib/hallway";
 
-export default function KalenderPage() {
-  return <PlaceholderPage title="Kalender" message="Kalenderen er ikke bygget ennå." />;
+export const dynamic = "force-dynamic";
+
+export default async function KalenderPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ snapshot?: string | string[] }>;
+}) {
+  const hallway = await loadHallway(searchParams);
+  return <KalenderScreen {...hallway} />;
 }

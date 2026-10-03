@@ -40,6 +40,27 @@ export type SoonItem = {
   meta: string;
 };
 
+export type CalendarBlock =
+  | { kind: "routine"; label: string }
+  | { kind: "activity"; time: string; title: string; warning?: string };
+
+export type CalendarDay = {
+  blocks: CalendarBlock[];
+  conflict?: boolean;
+};
+
+export type CalendarRow = {
+  personId: PersonId;
+  detail: string;
+  days: CalendarDay[];
+};
+
+export type CalendarWeek = {
+  startsOn: string;
+  notice: string;
+  rows: CalendarRow[];
+};
+
 export type WeatherSymbol =
   | "cloud-rain"
   | "cloud-drizzle"
