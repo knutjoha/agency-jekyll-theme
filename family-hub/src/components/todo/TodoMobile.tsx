@@ -432,12 +432,12 @@ function TitleField({
         <span
           aria-hidden
           style={{
-            visibility: "hidden",
             whiteSpace: "pre",
             fontFamily: "var(--font-body)",
             fontSize: 15,
             lineHeight: 1.2,
             fontWeight: 400,
+            color: "var(--text)",
           }}
         >
           {value || " "}
@@ -463,7 +463,7 @@ function TitleField({
             outline: "none",
             background: "transparent",
             caretColor: "transparent",
-            color: "var(--text)",
+            color: "transparent",
             fontFamily: "var(--font-body)",
             fontSize: 15,
             lineHeight: 1.2,
