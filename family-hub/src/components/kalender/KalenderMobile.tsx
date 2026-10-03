@@ -26,6 +26,11 @@ function fixtureTitle(person: Person, time: string, fallback: string): string {
   return person.events.find((event) => event.time === time)?.title ?? fallback;
 }
 
+function driverMissing(person: Person, time: string, blockWarning?: string): boolean {
+  if (blockWarning) return true;
+  return person.transport.kind === "missing" && person.events.some((event) => event.time === time);
+}
+
 function agendaFor(dayIndex: number): AgendaItem[] {
   const items = new Map<string, AgendaItem>();
   for (const row of calendarWeek.rows) {
@@ -37,13 +42,13 @@ function agendaFor(dayIndex: number): AgendaItem[] {
       const existing = items.get(key);
       if (existing) {
         existing.people.push(person);
-        existing.warning = existing.warning || Boolean(block.warning);
+        existing.warning = existing.warning || driverMissing(person, block.time, block.warning);
       } else {
         items.set(key, {
           time: block.time,
           title,
           people: [person],
-          warning: Boolean(block.warning),
+          warning: driverMissing(person, block.time, block.warning),
         });
       }
     }
@@ -223,7 +228,7 @@ export function KalenderMobile({ clock, weather }: { clock: OsloNow; weather: We
                   height: 9,
                   flexShrink: 0,
                   borderRadius: "var(--r-full)",
-                  background: `var(${item.people[0].colorToken})`,
+                  background: `var(${item.people[item.people.length - 1].colorToken})`,
                 }}
               />
               <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
