@@ -411,7 +411,7 @@ function TaskCard({
       <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 10, width: "100%" }}>
         <CheckBox done={Boolean(task.done)} label={task.title} onToggle={onToggle} />
         {editing ? (
-          <TitleField value={task.title} onChange={onTitle} label={task.title || "Oppgavetittel"} />
+          <TitleField value={task.title} onChange={onTitle} onSave={onSave} label={task.title || "Oppgavetittel"} />
         ) : (
           <div
             style={{
@@ -474,7 +474,7 @@ function EditorCard({
             outlineOffset: -0.75,
           }}
         />
-        <TitleField value={title} onChange={onTitle} label="Ny oppgave" autoFocus />
+        <TitleField value={title} onChange={onTitle} onSave={onSave} label="Ny oppgave" autoFocus />
       </div>
       <EditorActions onCancel={onCancel} onSave={onSave} />
     </article>
@@ -512,11 +512,13 @@ function CheckBox({ done, label, onToggle }: { done: boolean; label: string; onT
 function TitleField({
   value,
   onChange,
+  onSave,
   label,
   autoFocus,
 }: {
   value: string;
   onChange: (value: string) => void;
+  onSave: () => void;
   label: string;
   autoFocus?: boolean;
 }) {
@@ -544,7 +546,7 @@ function TitleField({
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
-              event.currentTarget.form?.requestSubmit();
+              onSave();
             }
           }}
           style={{
