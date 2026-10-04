@@ -94,6 +94,21 @@ export function formatOslo(date: Date): OsloNow {
   };
 }
 
+/** UTC instant of 00:00 on a calendar date in Europe/Oslo, including daylight-saving changes. */
+export function osloMidnightUtc(isoDate: string): Date {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  let utc = Date.UTC(year, month - 1, day, 0, 0, 0);
+  const target = utc;
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const parts = osloParts(new Date(utc));
+    const asUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
+    const diff = asUtc - target;
+    if (diff === 0) return new Date(utc);
+    utc -= diff;
+  }
+  return new Date(utc);
+}
+
 export function meteogramNowHour(hour: number): number {
   if (hour < 8) return 8;
   if (hour >= 22) return 22;

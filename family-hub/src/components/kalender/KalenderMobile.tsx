@@ -4,9 +4,8 @@ import { Plus, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { columnsFor } from "@/components/kalender/WeekGrid";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
-import { calendarWeek } from "@/data/calendar";
 import { people } from "@/data/fixture";
-import type { Person, WeatherView } from "@/data/types";
+import type { CalendarSource, CalendarWeek, Person, WeatherView } from "@/data/types";
 import { formatOslo, type OsloNow } from "@/lib/oslo";
 
 type AgendaItem = {
@@ -31,24 +30,26 @@ function driverMissing(person: Person, time: string, blockWarning?: string): boo
   return person.transport.kind === "missing" && person.events.some((event) => event.time === time);
 }
 
-function agendaFor(dayIndex: number): AgendaItem[] {
+function agendaFor(week: CalendarWeek, dayIndex: number, source: CalendarSource): AgendaItem[] {
   const items = new Map<string, AgendaItem>();
-  for (const row of calendarWeek.rows) {
+  for (const row of week.rows) {
     const person = personFor(row.personId);
     for (const block of row.days[dayIndex]?.blocks ?? []) {
       if (block.kind !== "activity") continue;
-      const title = fixtureTitle(person, block.time, block.title);
+      const title = source === "fixture" ? fixtureTitle(person, block.time, block.title) : block.title;
+      const warning =
+        source === "fixture" ? driverMissing(person, block.time, block.warning) : Boolean(block.warning);
       const key = `${block.time}|${title}`;
       const existing = items.get(key);
       if (existing) {
         existing.people.push(person);
-        existing.warning = existing.warning || driverMissing(person, block.time, block.warning);
+        existing.warning = existing.warning || warning;
       } else {
         items.set(key, {
           time: block.time,
           title,
           people: [person],
-          warning: driverMissing(person, block.time, block.warning),
+          warning,
         });
       }
     }
@@ -56,13 +57,13 @@ function agendaFor(dayIndex: number): AgendaItem[] {
   return [...items.values()].sort((left, right) => left.time.localeCompare(right.time));
 }
 
-function detailFor(item: AgendaItem): string {
+function detailFor(item: AgendaItem, source: CalendarSource): string {
   const names = item.people.map((person) => person.name).join(" · ");
   if (item.warning) {
     const missing = item.people.find((person) => person.transport.kind === "missing");
     return `${names} · ${missing?.transport.label ?? "Sjåfør mangler"}`;
   }
-  if (item.people.length === 1) {
+  if (source === "fixture" && item.people.length === 1) {
     const person = item.people[0];
     const timed = person.events.filter((event) => event.time);
     if (person.transport.kind === "assigned" && timed.length === 1 && timed[0].time === item.time) {
@@ -81,19 +82,30 @@ function countLabel(count: number): string {
   return `${count} ${count === 1 ? "hendelse" : "hendelser"}`;
 }
 
-export function KalenderMobile({ clock, weather }: { clock: OsloNow; weather: WeatherView }) {
-  const { columns } = columnsFor(clock);
+export function KalenderMobile({
+  clock,
+  weather,
+  week,
+  source,
+}: {
+  clock: OsloNow;
+  weather: WeatherView;
+  week: CalendarWeek;
+  source: CalendarSource;
+}) {
+  const { columns } = columnsFor(clock, week.startsOn);
   const todayKey = columns.find((column) => column.today)?.key ?? columns[0].key;
   const [selectedKey, setSelectedKey] = useState(todayKey);
   const selectedIndex = Math.max(
     0,
     columns.findIndex((column) => column.key === selectedKey),
   );
-  const items = agendaFor(selectedIndex);
+  const items = agendaFor(week, selectedIndex, source);
 
   return (
     <div
       data-region="kalender-mobile"
+      data-calendar-source={source}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -252,7 +264,7 @@ export function KalenderMobile({ clock, weather }: { clock: OsloNow; weather: We
                     color: detailColor,
                   }}
                 >
-                  {detailFor(item)}
+                  {detailFor(item, source)}
                 </div>
               </div>
               {item.warning ? <TriangleAlert size={15} color="var(--accent)" /> : null}

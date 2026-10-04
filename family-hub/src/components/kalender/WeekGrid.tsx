@@ -1,7 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { calendarWeek } from "@/data/calendar";
 import { people } from "@/data/fixture";
-import type { Person } from "@/data/types";
+import type { CalendarSource, CalendarWeek, Person } from "@/data/types";
 import { DayCell } from "@/components/kalender/DayCell";
 import { isoWeekNumber, type OsloNow } from "@/lib/oslo";
 
@@ -28,11 +27,14 @@ function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-export function columnsFor(clock: OsloNow): { columns: DayColumn[]; period: string; weekNumber: number } {
+export function columnsFor(
+  clock: OsloNow,
+  startsOn: string,
+): { columns: DayColumn[]; period: string; weekNumber: number } {
   const [day, month, year] = clock.numericDate.split(".");
   const todayKey = `${year}-${month}-${day}`;
   const columns = WEEKDAYS.map((weekday, index) => {
-    const date = shiftDate(calendarWeek.startsOn, index);
+    const date = shiftDate(startsOn, index);
     const key = `${date.year}-${pad(date.month)}-${pad(date.day)}`;
     return {
       key,
@@ -41,8 +43,8 @@ export function columnsFor(clock: OsloNow): { columns: DayColumn[]; period: stri
       today: key === todayKey,
     };
   });
-  const start = shiftDate(calendarWeek.startsOn, 0);
-  const end = shiftDate(calendarWeek.startsOn, 6);
+  const start = shiftDate(startsOn, 0);
+  const end = shiftDate(startsOn, 6);
   return {
     columns,
     period: `${pad(start.day)}.${pad(start.month)} – ${pad(end.day)}.${pad(end.month)}.${end.year}`,
@@ -56,12 +58,24 @@ function personFor(id: Person["id"]): Person {
   return person;
 }
 
-export function WeekGrid({ clock }: { clock: OsloNow }) {
-  const { columns, period, weekNumber } = columnsFor(clock);
+export function WeekGrid({
+  clock,
+  week,
+  source,
+  onShift,
+}: {
+  clock: OsloNow;
+  week: CalendarWeek;
+  source: CalendarSource;
+  onShift: (startsOn: string, deltaWeeks: number) => void;
+}) {
+  const { columns, period, weekNumber } = columnsFor(clock, week.startsOn);
+  const canShift = source === "google";
 
   return (
     <section
       data-region="calendar"
+      data-calendar-source={source}
       style={{
         flex: 1,
         minHeight: 0,
@@ -110,43 +124,57 @@ export function WeekGrid({ clock }: { clock: OsloNow }) {
           </div>
         </div>
         <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8 }}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              padding: "7px 13px",
-              borderRadius: "var(--r-full)",
-              background: "var(--tile-2)",
-            }}
-          >
+          {week.notice ? (
             <div
               style={{
-                width: 9,
-                height: 9,
-                flexShrink: 0,
+                display: "flex",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+                padding: "7px 13px",
                 borderRadius: "var(--r-full)",
-                background: "var(--accent)",
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-                lineHeight: 1,
-                fontWeight: 400,
-                color: "var(--text-2)",
-                whiteSpace: "nowrap",
+                background: "var(--tile-2)",
               }}
             >
-              {calendarWeek.notice}
-            </span>
-          </div>
-          <button type="button" aria-label="Forrige uke" style={navButtonStyle}>
+              <div
+                style={{
+                  width: 9,
+                  height: 9,
+                  flexShrink: 0,
+                  borderRadius: "var(--r-full)",
+                  background: "var(--accent)",
+                }}
+              />
+              <span
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: 14,
+                  lineHeight: 1,
+                  fontWeight: 400,
+                  color: "var(--text-2)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {week.notice}
+              </span>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            aria-label="Forrige uke"
+            aria-disabled={canShift ? undefined : true}
+            onClick={canShift ? () => onShift(week.startsOn, -1) : undefined}
+            style={{ ...navButtonStyle, cursor: canShift ? "pointer" : "default" }}
+          >
             <ChevronLeft size={20} color="var(--text-2)" />
           </button>
-          <button type="button" aria-label="Neste uke" style={navButtonStyle}>
+          <button
+            type="button"
+            aria-label="Neste uke"
+            aria-disabled={canShift ? undefined : true}
+            onClick={canShift ? () => onShift(week.startsOn, 1) : undefined}
+            style={{ ...navButtonStyle, cursor: canShift ? "pointer" : "default" }}
+          >
             <ChevronRight size={20} color="var(--text-2)" />
           </button>
         </div>
@@ -206,7 +234,7 @@ export function WeekGrid({ clock }: { clock: OsloNow }) {
           gap: 10,
         }}
       >
-        {calendarWeek.rows.map((row) => {
+        {week.rows.map((row) => {
           const person = personFor(row.personId);
           return (
             <div key={row.personId} data-person={row.personId} style={{ ...gridRowStyle, flex: 1, minHeight: 0 }}>

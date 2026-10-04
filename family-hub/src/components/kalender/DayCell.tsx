@@ -109,7 +109,7 @@ export function DayCell({ day, colorToken }: { day: CalendarDay; colorToken: Col
         block.kind === "routine" ? (
           <RoutineBand key={`${block.label}-${index}`} label={block.label} />
         ) : (
-          <ActivityChip key={`${block.time}-${block.title}`} block={block} colorToken={colorToken} />
+          <ActivityChip key={`${block.time}-${block.title}-${index}`} block={block} colorToken={colorToken} />
         ),
       )}
     </div>

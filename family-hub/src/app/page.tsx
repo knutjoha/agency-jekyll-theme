@@ -8,6 +8,6 @@ export default async function Page({
 }: {
   searchParams: Promise<{ snapshot?: string | string[] }>;
 }) {
-  const hallway = await loadHallway(searchParams);
+  const hallway = await loadHallway(searchParams, { includeCalendar: true });
   return <HomeScreen {...hallway} />;
 }

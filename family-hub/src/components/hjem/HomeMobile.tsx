@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { TransportPill } from "@/components/hjem/TransportPill";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
-import { people, soon } from "@/data/fixture";
+import { soon } from "@/data/fixture";
 import type { CalendarEvent, Person, SoonItem, WeatherView } from "@/data/types";
 import type { OsloNow } from "@/lib/oslo";
 
@@ -95,7 +95,15 @@ function PersonCard({ person }: { person: Person }) {
   );
 }
 
-export function HomeMobile({ clock, weather }: { clock: OsloNow; weather: WeatherView }) {
+export function HomeMobile({
+  clock,
+  weather,
+  people,
+}: {
+  clock: OsloNow;
+  weather: WeatherView;
+  people: Person[];
+}) {
   const [expanded, setExpanded] = useState(false);
   const rows = previewSoon(soon, expanded);
 

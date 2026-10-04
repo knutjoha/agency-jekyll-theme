@@ -1,10 +1,19 @@
-import type { Person } from "@/data/types";
+import type { CalendarSource, Person } from "@/data/types";
 import { PersonRow } from "@/components/hjem/PersonRow";
 
-export function TodayTile({ people, numericDate }: { people: Person[]; numericDate: string }) {
+export function TodayTile({
+  people,
+  numericDate,
+  source,
+}: {
+  people: Person[];
+  numericDate: string;
+  source: CalendarSource;
+}) {
   return (
     <section
       data-region="today"
+      data-calendar-source={source}
       style={{
         width: "100%",
         height: 600,
