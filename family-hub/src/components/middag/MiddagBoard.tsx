@@ -2,8 +2,9 @@
 
 import { useRef, useState } from "react";
 import { Check, GripVertical, Move, Pencil, Plus, RefreshCw, Timer } from "lucide-react";
-import { dinnerMenu, stagedDrag } from "@/data/middag";
-import type { GroceryAisle, Meal, MenuDay } from "@/data/types";
+import { stagedDrag } from "@/data/middag";
+import type { DinnerMenu, GroceryAisle, Meal, MenuDay } from "@/data/types";
+import { dinnerBody, writeJson } from "@/lib/persist-client";
 import { isoWeekNumber, type OsloNow } from "@/lib/oslo";
 
 const STAGED_LEFT = 206;
@@ -33,29 +34,43 @@ function cloneAisles(aisles: GroceryAisle[]): GroceryAisle[] {
   }));
 }
 
-export function MiddagBoard({ clock }: { clock: OsloNow }) {
-  const [days, setDays] = useState(() => cloneDays(dinnerMenu.days));
-  const [lift, setLift] = useState<Lift | null>(() => ({
-    meal: { ...stagedDrag.meal, diets: [...stagedDrag.meal.diets] },
-    fromDayId: stagedDrag.fromDayId,
-    targetDayId: stagedDrag.targetDayId,
-    live: false,
-    left: STAGED_LEFT,
-    top: STAGED_TOP,
-  }));
-  const [aisles, setAisles] = useState(() => cloneAisles(dinnerMenu.aisles));
+export function MiddagBoard({
+  clock,
+  menu,
+  menuPersisted,
+  shoppingPersisted,
+}: {
+  clock: OsloNow;
+  menu: DinnerMenu;
+  menuPersisted: boolean;
+  shoppingPersisted: boolean;
+}) {
+  const [days, setDays] = useState(() => cloneDays(menu.days));
+  const [lift, setLift] = useState<Lift | null>(() =>
+    menuPersisted
+      ? null
+      : {
+          meal: { ...stagedDrag.meal, diets: [...stagedDrag.meal.diets] },
+          fromDayId: stagedDrag.fromDayId,
+          targetDayId: stagedDrag.targetDayId,
+          live: false,
+          left: STAGED_LEFT,
+          top: STAGED_TOP,
+        },
+  );
+  const [aisles, setAisles] = useState(() => cloneAisles(menu.aisles));
   const [adding, setAdding] = useState(false);
   const [draftItem, setDraftItem] = useState("");
   const daysRef = useRef<HTMLDivElement>(null);
   const daysState = useRef(days);
   const liftState = useRef(lift);
-  const originals = useRef(new Map(dinnerMenu.days.flatMap((day) => (day.meal ? [[day.meal.id, day.meal.title] as const] : []))));
-  const nextId = useRef(1);
+  const savedDays = useRef(cloneDays(menu.days));
+  const originals = useRef(new Map(menu.days.flatMap((day) => (day.meal ? [[day.meal.id, day.meal.title] as const] : []))));
   daysState.current = days;
   liftState.current = lift;
 
   const todayKey = clock.numericDate.slice(0, 5);
-  const weekNumber = isoWeekNumber(dinnerMenu.startsOn.year, dinnerMenu.startsOn.month, dinnerMenu.startsOn.day);
+  const weekNumber = isoWeekNumber(menu.startsOn.year, menu.startsOn.month, menu.startsOn.day);
   const itemCount = aisles.reduce((sum, aisle) => sum + aisle.items.length, 0);
 
   function updateMeal(id: string, patch: Partial<Meal>) {
@@ -79,6 +94,21 @@ export function MiddagBoard({ clock }: { clock: OsloNow }) {
     updateMeal(meal.id, { editing: false, title: originals.current.get(meal.id) ?? meal.title });
   }
 
+  function persistDays(next: MenuDay[]) {
+    if (!menuPersisted) return;
+    const snapshot = cloneDays(next);
+    void writeJson("/api/dinner", "PATCH", dinnerBody(snapshot)).then((ok) => {
+      if (ok) {
+        savedDays.current = snapshot;
+        return;
+      }
+      const restored = cloneDays(savedDays.current);
+      daysState.current = restored;
+      setDays(restored);
+      setLift(null);
+    });
+  }
+
   function saveEdit(meal: Meal) {
     const title = meal.title.trim();
     if (!title) {
@@ -86,7 +116,12 @@ export function MiddagBoard({ clock }: { clock: OsloNow }) {
       return;
     }
     originals.current.set(meal.id, title);
-    updateMeal(meal.id, { editing: false, title });
+    const next = days.map((day) =>
+      day.meal?.id === meal.id ? { ...day, meal: { ...day.meal, editing: false, title } } : day,
+    );
+    daysState.current = next;
+    setDays(next);
+    persistDays(next);
   }
 
   function finishDrag() {
@@ -109,6 +144,7 @@ export function MiddagBoard({ clock }: { clock: OsloNow }) {
     liftState.current = null;
     setDays(next);
     setLift(null);
+    persistDays(next);
   }
 
   function trackDrag(event: PointerEvent) {
@@ -168,12 +204,25 @@ export function MiddagBoard({ clock }: { clock: OsloNow }) {
   }
 
   function toggleItem(id: string) {
+    const item = aisles.flatMap((aisle) => aisle.items).find((entry) => entry.id === id);
+    if (!item) return;
+    const done = !item.done;
     setAisles((current) =>
       current.map((aisle) => ({
         ...aisle,
-        items: aisle.items.map((item) => (item.id === id ? { ...item, done: !item.done } : item)),
+        items: aisle.items.map((entry) => (entry.id === id ? { ...entry, done } : entry)),
       })),
     );
+    if (!shoppingPersisted) return;
+    void writeJson("/api/shopping", "PATCH", { id, done }).then((ok) => {
+      if (ok) return;
+      setAisles((current) =>
+        current.map((aisle) => ({
+          ...aisle,
+          items: aisle.items.map((entry) => (entry.id === id && entry.done === done ? { ...entry, done: !done } : entry)),
+        })),
+      );
+    });
   }
 
   function saveItem() {
@@ -183,14 +232,26 @@ export function MiddagBoard({ clock }: { clock: OsloNow }) {
       setDraftItem("");
       return;
     }
+    const aisleId = aisles[aisles.length - 1]?.id;
+    const item = { id: crypto.randomUUID(), name, quantity: "1 stk" };
     setAisles((current) => {
       const next = cloneAisles(current);
       const aisle = next[next.length - 1];
-      aisle?.items.push({ id: `ny-${nextId.current++}`, name, quantity: "1 stk" });
+      aisle?.items.push(item);
       return next;
     });
     setAdding(false);
     setDraftItem("");
+    if (!shoppingPersisted || !aisleId) return;
+    void writeJson("/api/shopping", "POST", { ...item, aisleId }).then((ok) => {
+      if (ok) return;
+      setAisles((current) =>
+        current.map((aisle) => ({
+          ...aisle,
+          items: aisle.items.filter((entry) => entry.id !== item.id),
+        })),
+      );
+    });
   }
 
   return (
@@ -226,7 +287,7 @@ export function MiddagBoard({ clock }: { clock: OsloNow }) {
                 whiteSpace: "nowrap",
               }}
             >
-              Uke {weekNumber} · {dinnerMenu.period}
+              Uke {weekNumber} · {menu.period}
             </div>
           </div>
           <div

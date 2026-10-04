@@ -2,9 +2,9 @@
 
 import { useRef, useState } from "react";
 import { Calendar, Check, Plus, TriangleAlert } from "lucide-react";
-import { todoLanes } from "@/data/todo";
 import { people } from "@/data/fixture";
 import type { Person, PersonId, TodoFilter, TodoLane, TodoTask } from "@/data/types";
+import { writeJson } from "@/lib/persist-client";
 
 const FILTERS: { id: TodoFilter; label: string }[] = [
   { id: "alle", label: "Alle" },
@@ -12,8 +12,8 @@ const FILTERS: { id: TodoFilter; label: string }[] = [
   { id: "fullfort", label: "Fullførte" },
 ];
 
-function cloneLanes(): TodoLane[] {
-  return todoLanes.map((lane) => ({
+function cloneLanes(lanes: TodoLane[]): TodoLane[] {
+  return lanes.map((lane) => ({
     ...lane,
     tasks: lane.tasks.map((task) => ({ ...task })),
   }));
@@ -31,12 +31,11 @@ function matches(task: TodoTask, filter: TodoFilter): boolean {
   return true;
 }
 
-export function TodoBoard() {
-  const [lanes, setLanes] = useState(cloneLanes);
+export function TodoBoard({ lanes: initialLanes, persisted }: { lanes: TodoLane[]; persisted: boolean }) {
+  const [lanes, setLanes] = useState(() => cloneLanes(initialLanes));
   const [filter, setFilter] = useState<TodoFilter>("alle");
   const [drafts, setDrafts] = useState<Partial<Record<PersonId, string>>>({});
-  const originals = useRef(new Map(todoLanes.flatMap((lane) => lane.tasks.map((task) => [task.id, task.title]))));
-  const nextId = useRef(1);
+  const originals = useRef(new Map(initialLanes.flatMap((lane) => lane.tasks.map((task) => [task.id, task.title]))));
 
   const tasks = lanes.flatMap((lane) => lane.tasks);
   const openCount = tasks.filter((task) => !task.done).length;
@@ -52,14 +51,25 @@ export function TodoBoard() {
   }
 
   function toggleTask(id: string) {
+    const task = lanes.flatMap((lane) => lane.tasks).find((entry) => entry.id === id);
+    if (!task) return;
+    const done = !task.done;
     setLanes((current) =>
       current.map((lane) => ({
         ...lane,
-        tasks: lane.tasks.map((task) =>
-          task.id === id ? { ...task, done: !task.done, editing: false } : task,
-        ),
+        tasks: lane.tasks.map((entry) => (entry.id === id ? { ...entry, done, editing: false } : entry)),
       })),
     );
+    if (!persisted) return;
+    void writeJson("/api/todos", "PATCH", { id, done }).then((ok) => {
+      if (ok) return;
+      setLanes((current) =>
+        current.map((lane) => ({
+          ...lane,
+          tasks: lane.tasks.map((entry) => (entry.id === id && entry.done === done ? { ...entry, done: !done } : entry)),
+        })),
+      );
+    });
   }
 
   function cancelEdit(id: string) {
@@ -72,8 +82,15 @@ export function TodoBoard() {
       cancelEdit(task.id);
       return;
     }
+    const previous = originals.current.get(task.id) ?? title;
     originals.current.set(task.id, title);
     updateTask(task.id, { editing: false, title });
+    if (!persisted) return;
+    void writeJson("/api/todos", "PATCH", { id: task.id, title }).then((ok) => {
+      if (ok) return;
+      originals.current.set(task.id, previous);
+      updateTask(task.id, { title: previous });
+    });
   }
 
   function openDraft(personId: PersonId) {
@@ -94,11 +111,21 @@ export function TodoBoard() {
       cancelDraft(personId);
       return;
     }
-    const task: TodoTask = { id: `${personId}-ny-${nextId.current++}`, title };
+    const task: TodoTask = { id: crypto.randomUUID(), title };
     setLanes((current) =>
       current.map((lane) => (lane.personId === personId ? { ...lane, tasks: [...lane.tasks, task] } : lane)),
     );
     cancelDraft(personId);
+    if (!persisted) return;
+    void writeJson("/api/todos", "POST", { id: task.id, personId, title }).then((ok) => {
+      if (ok) return;
+      setLanes((current) =>
+        current.map((lane) => ({
+          ...lane,
+          tasks: lane.tasks.filter((entry) => entry.id !== task.id),
+        })),
+      );
+    });
   }
 
   return (
