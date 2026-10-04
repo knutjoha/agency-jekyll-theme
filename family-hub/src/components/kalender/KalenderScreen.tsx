@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { KalenderMobile } from "@/components/kalender/KalenderMobile";
 import { WeekGrid } from "@/components/kalender/WeekGrid";
 import { HallwayPage } from "@/components/shell/HallwayPage";
 import { addIsoDays } from "@/lib/calendar-view";
@@ -13,7 +14,17 @@ export function KalenderScreen(props: HallwayData) {
   const calendar = useCalendar(props.snapshot, props.initialCalendar, weekQuery);
 
   return (
-    <HallwayPage {...props}>
+    <HallwayPage
+      {...props}
+      mobile={(clock, weather) => (
+        <KalenderMobile
+          clock={clock}
+          weather={weather}
+          week={calendar.week}
+          source={calendar.source}
+        />
+      )}
+    >
       {(clock) => (
         <div style={{ flex: 1, minHeight: 0, display: "flex", width: "100%" }}>
           <WeekGrid

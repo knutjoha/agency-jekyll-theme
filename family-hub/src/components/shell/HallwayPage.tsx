@@ -12,7 +12,11 @@ export function HallwayPage({
   initialWeather,
   initialNow,
   children,
-}: HallwayData & { children: (clock: OsloNow, weather: WeatherView) => ReactNode }) {
+  mobile,
+}: HallwayData & {
+  children: (clock: OsloNow, weather: WeatherView) => ReactNode;
+  mobile?: (clock: OsloNow, weather: WeatherView) => ReactNode;
+}) {
   const [now, setNow] = useState(() => (snapshot ? SNAPSHOT_AT : new Date(initialNow)));
   const [weather, setWeather] = useState<WeatherView>(snapshot ? fixtureWeather : initialWeather);
 
@@ -61,6 +65,7 @@ export function HallwayPage({
 
   return (
     <div
+      className={mobile ? "hallway-page has-phone" : "hallway-page"}
       style={{
         height: "100%",
         boxSizing: "border-box",
@@ -70,8 +75,11 @@ export function HallwayPage({
         padding: 32,
       }}
     >
-      <HomeHeader clock={clock} weather={weather} />
-      {children(clock, weather)}
+      <div className="only-wide">
+        <HomeHeader clock={clock} weather={weather} />
+        {children(clock, weather)}
+      </div>
+      {mobile ? <div className="only-phone">{mobile(clock, weather)}</div> : null}
     </div>
   );
 }

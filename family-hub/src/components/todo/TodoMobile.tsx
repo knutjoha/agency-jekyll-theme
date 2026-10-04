@@ -2,22 +2,13 @@
 
 import { useRef, useState } from "react";
 import { Calendar, Check, Plus, TriangleAlert } from "lucide-react";
+import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { people } from "@/data/fixture";
-import type { Person, PersonId, TodoFilter, TodoLane, TodoTask } from "@/data/types";
+import type { Person, PersonId, TodoLane, TodoTask, WeatherView } from "@/data/types";
 import { writeJson } from "@/lib/persist-client";
+import type { OsloNow } from "@/lib/oslo";
 
-const FILTERS: { id: TodoFilter; label: string }[] = [
-  { id: "alle", label: "Alle" },
-  { id: "frist", label: "Med frist" },
-  { id: "fullfort", label: "Fullførte" },
-];
-
-function cloneLanes(lanes: TodoLane[]): TodoLane[] {
-  return lanes.map((lane) => ({
-    ...lane,
-    tasks: lane.tasks.map((task) => ({ ...task })),
-  }));
-}
+const PHONE_EDIT_ID = "knut-dekk";
 
 function personFor(id: PersonId): Person {
   const person = people.find((entry) => entry.id === id);
@@ -25,21 +16,42 @@ function personFor(id: PersonId): Person {
   return person;
 }
 
-function matches(task: TodoTask, filter: TodoFilter): boolean {
-  if (filter === "fullfort") return Boolean(task.done);
-  if (filter === "frist") return Boolean(task.due);
-  return true;
+function shortName(name: string): string {
+  return name.split(" ")[0] ?? name;
 }
 
-export function TodoBoard({ lanes: initialLanes, persisted }: { lanes: TodoLane[]; persisted: boolean }) {
-  const [lanes, setLanes] = useState(() => cloneLanes(initialLanes));
-  const [filter, setFilter] = useState<TodoFilter>("alle");
+function openCount(tasks: TodoTask[]): number {
+  return tasks.filter((task) => !task.done).length;
+}
+
+export function TodoMobile({
+  clock,
+  weather,
+  lanes: initialLanes,
+  persisted,
+}: {
+  clock: OsloNow;
+  weather: WeatherView;
+  lanes: TodoLane[];
+  persisted: boolean;
+}) {
+  const [lanes, setLanes] = useState<TodoLane[]>(() =>
+    initialLanes.map((lane) => ({
+      ...lane,
+      tasks: lane.tasks.map((task) => ({
+        ...task,
+        editing: persisted ? false : task.id === PHONE_EDIT_ID,
+      })),
+    })),
+  );
+  const [selectedId, setSelectedId] = useState<PersonId>("knut");
   const [drafts, setDrafts] = useState<Partial<Record<PersonId, string>>>({});
   const originals = useRef(new Map(initialLanes.flatMap((lane) => lane.tasks.map((task) => [task.id, task.title]))));
 
-  const tasks = lanes.flatMap((lane) => lane.tasks);
-  const openCount = tasks.filter((task) => !task.done).length;
-  const doneCount = tasks.filter((task) => task.done).length;
+  const selected = lanes.find((lane) => lane.personId === selectedId) ?? lanes[0];
+  const person = personFor(selected.personId);
+  const draft = drafts[selected.personId];
+  const drafting = draft !== undefined;
 
   function updateTask(id: string, patch: Partial<TodoTask>) {
     setLanes((current) =>
@@ -93,8 +105,16 @@ export function TodoBoard({ lanes: initialLanes, persisted }: { lanes: TodoLane[
     });
   }
 
-  function openDraft(personId: PersonId) {
-    setDrafts((current) => ({ ...current, [personId]: current[personId] ?? "" }));
+  function beginDraft(personId: PersonId) {
+    setLanes((current) =>
+      current.map((lane) => ({
+        ...lane,
+        tasks: lane.tasks.map((task) =>
+          task.editing ? { ...task, editing: false, title: originals.current.get(task.id) ?? task.title } : task,
+        ),
+      })),
+    );
+    setDrafts({ [personId]: "" });
   }
 
   function cancelDraft(personId: PersonId) {
@@ -112,6 +132,7 @@ export function TodoBoard({ lanes: initialLanes, persisted }: { lanes: TodoLane[
       return;
     }
     const task: TodoTask = { id: crypto.randomUUID(), title };
+    originals.current.set(task.id, title);
     setLanes((current) =>
       current.map((lane) => (lane.personId === personId ? { ...lane, tasks: [...lane.tasks, task] } : lane)),
     );
@@ -129,249 +150,171 @@ export function TodoBoard({ lanes: initialLanes, persisted }: { lanes: TodoLane[
   }
 
   return (
-    <section
-      data-region="todo"
+    <div
+      data-region="todo-mobile"
       style={{
-        flex: 1,
-        minHeight: 0,
-        width: "100%",
         display: "flex",
         flexDirection: "column",
-        gap: 16,
+        gap: 12,
+        padding: "16px 16px 12px",
+        boxSizing: "border-box",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          justifyContent: "space-between",
-          alignItems: "center",
-          width: "100%",
-          padding: "0 4px",
-          boxSizing: "border-box",
-        }}
-      >
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 14 }}>
-          <h1
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-heading)",
-              fontSize: 24,
-              lineHeight: "normal",
-              fontWeight: 400,
-              color: "var(--text)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            Oppgaver
-          </h1>
-          <div
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: 15,
-              lineHeight: "normal",
-              fontWeight: 400,
-              color: "var(--text-muted)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {openCount} åpne · {doneCount} fullført i dag
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8 }}>
-          {FILTERS.map((item) => {
-            const active = filter === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => setFilter(item.id)}
-                style={{
-                  padding: "8px 14px",
-                  border: "none",
-                  borderRadius: "var(--r-full)",
-                  cursor: "pointer",
-                  background: active ? "var(--tile-2)" : "transparent",
-                  outline: active ? "none" : "1px solid color-mix(in srgb, var(--text) 8%, transparent)",
-                  outlineOffset: active ? undefined : -0.5,
-                  fontFamily: "var(--font-body)",
-                  fontSize: 14,
-                  lineHeight: "normal",
-                  fontWeight: 400,
-                  color: active ? "var(--text)" : "var(--text-muted)",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {item.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          width: "100%",
-          display: "flex",
-          flexDirection: "row",
-          gap: 16,
-          alignItems: "stretch",
-        }}
-      >
+      <PhoneHeader clock={clock} weather={weather} />
+
+      <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
         {lanes.map((lane) => {
-          const person = personFor(lane.personId);
-          const visible = lane.tasks.filter((task) => matches(task, filter));
-          const openInLane = lane.tasks.filter((task) => !task.done).length;
-          const draft = drafts[lane.personId];
-          const drafting = draft !== undefined;
+          const member = personFor(lane.personId);
+          const count = openCount(lane.tasks);
+          const selectedPerson = lane.personId === selected.personId;
+          const label = shortName(member.name);
           return (
-            <section
+            <button
               key={lane.personId}
+              type="button"
               data-person={lane.personId}
+              aria-pressed={selectedPerson}
+              aria-label={`${label} ${count}`}
+              onClick={() => setSelectedId(lane.personId)}
               style={{
                 flex: 1,
                 minWidth: 0,
-                height: "100%",
-                boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
-                gap: 12,
-                padding: 12,
-                background: "var(--tile)",
-                borderRadius: "var(--r-tile)",
+                alignItems: "center",
+                gap: 6,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                cursor: "pointer",
               }}
             >
-              <header
+              <span
                 style={{
+                  width: 42,
+                  height: 42,
+                  flexShrink: 0,
                   display: "flex",
-                  flexDirection: "row",
                   alignItems: "center",
-                  gap: 10,
-                  padding: 4,
-                  width: "100%",
-                  boxSizing: "border-box",
+                  justifyContent: "center",
+                  borderRadius: "var(--r-full)",
+                  background: `var(${member.colorToken})`,
+                  outline: selectedPerson ? "2px solid var(--accent)" : "none",
+                  outlineOffset: selectedPerson ? -1 : undefined,
+                  fontFamily: "var(--font-heading)",
+                  fontSize: 18,
+                  lineHeight: 1,
+                  fontWeight: 400,
+                  color: "var(--ink)",
                 }}
               >
-                <div
-                  style={{
-                    width: 30,
-                    height: 30,
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: "var(--r-full)",
-                    background: `var(${person.colorToken})`,
-                    fontFamily: "var(--font-heading)",
-                    fontSize: 15,
-                    lineHeight: 1,
-                    fontWeight: 400,
-                    color: "var(--ink)",
-                  }}
-                >
-                  {person.initial}
-                </div>
-                <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-                  <div
-                    style={{
-                    fontFamily: "var(--font-heading)",
-                    fontSize: 17,
-                    lineHeight: "normal",
-                    fontWeight: 400,
-                      color: "var(--text)",
-                    }}
-                  >
-                    {person.name}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-body)",
-                      fontSize: 12,
-                      lineHeight: "normal",
-                      fontWeight: 400,
-                      color: "var(--text-muted)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {lane.detail}
-                  </div>
-                </div>
-                <div
-                  style={{
-                    width: 24,
-                    height: 24,
-                    flexShrink: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    borderRadius: "var(--r-full)",
-                    background: "var(--tile-2)",
-                    fontFamily: "var(--font-data)",
-                    fontSize: 13,
-                    lineHeight: 1,
-                    fontWeight: 400,
-                    color: "var(--text-2)",
-                  }}
-                >
-                  {openInLane}
-                </div>
-              </header>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
-                {visible.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    task={task}
-                    onToggle={() => toggleTask(task.id)}
-                    onTitle={(title) => updateTask(task.id, { title })}
-                    onCancel={() => cancelEdit(task.id)}
-                    onSave={() => saveEdit(task)}
-                  />
-                ))}
-                {drafting ? (
-                  <EditorCard
-                    title={draft}
-                    onTitle={(title) => setDrafts((current) => ({ ...current, [lane.personId]: title }))}
-                    onCancel={() => cancelDraft(lane.personId)}
-                    onSave={() => saveDraft(lane.personId)}
-                  />
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => openDraft(lane.personId)}
-                    style={{
-                      width: "100%",
-                      height: 46,
-                      flexShrink: 0,
-                      display: "flex",
-                      flexDirection: "row",
-                      gap: 8,
-                      justifyContent: "center",
-                      alignItems: "center",
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      outline: "1.5px solid color-mix(in srgb, var(--text) 14%, transparent)",
-                      outlineOffset: -0.75,
-                      borderRadius: "var(--r-nested)",
-                      fontFamily: "var(--font-body)",
-                      fontSize: 14,
-                      lineHeight: 1,
-                      fontWeight: 400,
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    <Plus size={18} color="var(--text-muted)" />
-                    Ny oppgave
-                  </button>
-                )}
-              </div>
-            </section>
+                {member.initial}
+              </span>
+              <span
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: 11,
+                  lineHeight: 1,
+                  fontWeight: 400,
+                  color: selectedPerson ? "var(--text)" : "var(--text-muted)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {label} {count}
+              </span>
+            </button>
           );
         })}
       </div>
-    </section>
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          padding: "6px 2px 0",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-heading)",
+            fontSize: 20,
+            lineHeight: 1.1,
+            fontWeight: 400,
+            color: "var(--text)",
+            minWidth: 0,
+          }}
+        >
+          {person.name} · {selected.detail}
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 13,
+            lineHeight: 1,
+            fontWeight: 400,
+            color: "var(--text-muted)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {openCount(selected.tasks)} åpne
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {selected.tasks.map((task) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            onToggle={() => toggleTask(task.id)}
+            onTitle={(title) => updateTask(task.id, { title })}
+            onCancel={() => cancelEdit(task.id)}
+            onSave={() => saveEdit(task)}
+          />
+        ))}
+        {drafting ? (
+          <DraftCard
+            title={draft}
+            onTitle={(title) => setDrafts((current) => ({ ...current, [selected.personId]: title }))}
+            onCancel={() => cancelDraft(selected.personId)}
+            onSave={() => saveDraft(selected.personId)}
+          />
+        ) : null}
+      </div>
+
+      {drafting ? null : (
+        <button
+          type="button"
+          onClick={() => beginDraft(selected.personId)}
+          style={{
+            width: "100%",
+            height: 48,
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "row",
+            gap: 8,
+            justifyContent: "center",
+            alignItems: "center",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+            outline: "1.5px solid #ffffff24",
+            outlineOffset: -0.75,
+            borderRadius: "var(--r-nested)",
+            fontFamily: "var(--font-body)",
+            fontSize: 14,
+            lineHeight: 1,
+            fontWeight: 400,
+            color: "var(--text-muted)",
+          }}
+        >
+          <Plus size={17} color="var(--text-muted)" />
+          Ny oppgave til {shortName(person.name)}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -402,13 +345,13 @@ function TaskCard({
         flexDirection: "column",
         gap: 9,
         padding: 12,
-        background: "var(--tile-2)",
+        background: "var(--tile)",
         borderRadius: "var(--r-nested)",
         outline: editing ? "1.5px solid var(--accent)" : "none",
         outlineOffset: editing ? -0.75 : undefined,
       }}
     >
-      <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 10, width: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 11, width: "100%" }}>
         <CheckBox done={Boolean(task.done)} label={task.title} onToggle={onToggle} />
         {editing ? (
           <TitleField value={task.title} onChange={onTitle} onSave={onSave} label={task.title || "Oppgavetittel"} />
@@ -418,11 +361,10 @@ function TaskCard({
               flex: 1,
               minWidth: 0,
               fontFamily: "var(--font-body)",
-              fontSize: 14,
-              lineHeight: "normal",
+              fontSize: 15,
+              lineHeight: 1.2,
               fontWeight: 400,
               color: task.done ? "var(--text-muted)" : "var(--text)",
-              textDecoration: task.done ? "line-through" : "none",
             }}
           >
             {task.title}
@@ -435,7 +377,7 @@ function TaskCard({
   );
 }
 
-function EditorCard({
+function DraftCard({
   title,
   onTitle,
   onCancel,
@@ -456,13 +398,13 @@ function EditorCard({
         flexDirection: "column",
         gap: 9,
         padding: 12,
-        background: "var(--tile-2)",
+        background: "var(--tile)",
         borderRadius: "var(--r-nested)",
         outline: "1.5px solid var(--accent)",
         outlineOffset: -0.75,
       }}
     >
-      <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 10, width: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 11, width: "100%" }}>
         <span
           aria-hidden
           style={{
@@ -528,12 +470,12 @@ function TitleField({
         <span
           aria-hidden
           style={{
-            visibility: "hidden",
             whiteSpace: "pre",
             fontFamily: "var(--font-body)",
-            fontSize: 14,
-            lineHeight: 1,
+            fontSize: 15,
+            lineHeight: 1.2,
             fontWeight: 400,
+            color: "var(--text)",
           }}
         >
           {value || " "}
@@ -559,15 +501,15 @@ function TitleField({
             outline: "none",
             background: "transparent",
             caretColor: "transparent",
-            color: "var(--text)",
+            color: "transparent",
             fontFamily: "var(--font-body)",
-            fontSize: 14,
-            lineHeight: 1,
+            fontSize: 15,
+            lineHeight: 1.2,
             fontWeight: 400,
           }}
         />
       </span>
-      <span aria-hidden style={{ width: 2, height: 18, flexShrink: 0, background: "var(--accent)" }} />
+      <span aria-hidden style={{ width: 2, height: 19, flexShrink: 0, background: "var(--accent)" }} />
     </div>
   );
 }
@@ -594,7 +536,7 @@ function DueRow({ due, overdue }: { due: string; overdue: boolean }) {
         flexDirection: "row",
         alignItems: "center",
         gap: 7,
-        paddingLeft: 36,
+        paddingLeft: 37,
         width: "100%",
         boxSizing: "border-box",
         color,
@@ -607,7 +549,7 @@ function DueRow({ due, overdue }: { due: string; overdue: boolean }) {
           minWidth: 0,
           fontFamily: "var(--font-body)",
           fontSize: 12,
-          lineHeight: "normal",
+          lineHeight: 1.2,
           fontWeight: 400,
           color,
         }}
@@ -619,7 +561,7 @@ function DueRow({ due, overdue }: { due: string; overdue: boolean }) {
 }
 
 const pillBase = {
-  padding: "8px 14px",
+  padding: "9px 16px",
   border: "none",
   borderRadius: "var(--r-full)",
   cursor: "pointer",

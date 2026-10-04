@@ -1,25 +1,8 @@
 "use client";
 
-import {
-  CalendarDays,
-  CookingPot,
-  House,
-  ListTodo,
-  type LucideIcon,
-} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-
-const items: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/", label: "Hjem", icon: House },
-  { href: "/kalender", label: "Kalender", icon: CalendarDays },
-  { href: "/todo", label: "Todo", icon: ListTodo },
-  { href: "/middag", label: "Middag", icon: CookingPot },
-];
-
-function isActive(pathname: string, href: string): boolean {
-  return href === "/" ? pathname === "/" : pathname === href;
-}
+import { isNavActive, navHref, navItems } from "@/components/shell/navItems";
 
 export function NavRail() {
   const pathname = usePathname();
@@ -28,6 +11,7 @@ export function NavRail() {
 
   return (
     <nav
+      className="nav-rail"
       data-region="rail"
       style={{
         width: 96,
@@ -63,10 +47,10 @@ export function NavRail() {
           V
         </div>
       </div>
-      {items.map((item) => {
-        const active = isActive(pathname, item.href);
+      {navItems.map((item) => {
+        const active = isNavActive(pathname, item.href);
         const Icon = item.icon;
-        const href = snapshot ? `${item.href}?snapshot=1` : item.href;
+        const href = navHref(item.href, snapshot);
         return (
           <Link
             key={item.href}

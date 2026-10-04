@@ -2,6 +2,7 @@
 
 import { dinner, soon } from "@/data/fixture";
 import { DinnerTile } from "@/components/hjem/DinnerTile";
+import { HomeMobile } from "@/components/hjem/HomeMobile";
 import { SoonTile } from "@/components/hjem/SoonTile";
 import { TodayTile } from "@/components/hjem/TodayTile";
 import { WeatherTile } from "@/components/hjem/WeatherTile";
@@ -14,7 +15,12 @@ export function HomeScreen(props: HallwayData) {
   const calendar = useCalendar(props.snapshot, props.initialCalendar, null);
 
   return (
-    <HallwayPage {...props}>
+    <HallwayPage
+      {...props}
+      mobile={(clock, weather) => (
+        <HomeMobile clock={clock} weather={weather} people={calendar.todayPeople} />
+      )}
+    >
       {(clock, weather) => (
         <div
           style={{

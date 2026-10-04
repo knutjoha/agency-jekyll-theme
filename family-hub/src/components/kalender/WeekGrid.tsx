@@ -6,7 +6,7 @@ import { isoWeekNumber, type OsloNow } from "@/lib/oslo";
 
 const WEEKDAYS = ["man", "tir", "ons", "tor", "fre", "lør", "søn"] as const;
 
-type DayColumn = {
+export type DayColumn = {
   key: string;
   weekday: string;
   dateLabel: string;
@@ -27,7 +27,10 @@ function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
 
-function columnsFor(clock: OsloNow, startsOn: string): { columns: DayColumn[]; period: string; weekNumber: number } {
+export function columnsFor(
+  clock: OsloNow,
+  startsOn: string,
+): { columns: DayColumn[]; period: string; weekNumber: number } {
   const [day, month, year] = clock.numericDate.split(".");
   const todayKey = `${year}-${month}-${day}`;
   const columns = WEEKDAYS.map((weekday, index) => {
