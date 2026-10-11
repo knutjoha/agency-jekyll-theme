@@ -5,8 +5,15 @@ export const dynamic = "force-dynamic";
 
 const headers = { "Cache-Control": "no-store" };
 
-export async function GET() {
-  return NextResponse.json(await loadDinner(), { headers });
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  return NextResponse.json(
+    await loadDinner({
+      snapshot: url.searchParams.get("snapshot") === "1",
+      week: url.searchParams.get("week"),
+    }),
+    { headers },
+  );
 }
 
 export async function PATCH(request: Request) {

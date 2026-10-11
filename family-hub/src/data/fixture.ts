@@ -59,7 +59,6 @@ export const people: Person[] = [
 
 export const dinner: Dinner = {
   dish: "Ovnsbakt laks med poteter",
-  diets: ["Glutenfri", "Laktosefri"],
   shoppingCount: 6,
 };
 

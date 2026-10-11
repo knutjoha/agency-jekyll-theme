@@ -1,10 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, GripVertical, Move, Pencil, Plus, RefreshCw, Timer } from "lucide-react";
+import { WeekButtons, dayIsToday } from "@/components/middag/DinnerEditor";
 import { stagedDrag } from "@/data/middag";
-import type { DinnerMenu, GroceryAisle, Meal, MenuDay } from "@/data/types";
-import { dinnerBody, writeJson } from "@/lib/persist-client";
+import type { GroceryAisle, Meal, MenuDay } from "@/data/types";
 import { isoWeekNumber, type OsloNow } from "@/lib/oslo";
 
 const STAGED_LEFT = 206;
@@ -23,34 +23,44 @@ type Lift = {
 function cloneDays(days: MenuDay[]): MenuDay[] {
   return days.map((day) => ({
     ...day,
-    meal: day.meal ? { ...day.meal, diets: [...day.meal.diets] } : null,
-  }));
-}
-
-function cloneAisles(aisles: GroceryAisle[]): GroceryAisle[] {
-  return aisles.map((aisle) => ({
-    ...aisle,
-    items: aisle.items.map((item) => ({ ...item })),
+    meal: day.meal
+      ? { ...day.meal, ingredients: day.meal.ingredients.map((item) => ({ ...item })) }
+      : null,
   }));
 }
 
 export function MiddagBoard({
   clock,
-  menu,
+  week,
+  period,
+  days,
+  aisles,
   menuPersisted,
-  shoppingPersisted,
+  onShift,
+  onOpenDay,
+  onPreviewDays,
+  onCommitDays,
+  onToggleItem,
+  onAddItem,
 }: {
   clock: OsloNow;
-  menu: DinnerMenu;
+  week: string;
+  period: string;
+  days: MenuDay[];
+  aisles: GroceryAisle[];
   menuPersisted: boolean;
-  shoppingPersisted: boolean;
+  onShift: (startsOn: string, deltaWeeks: number) => void;
+  onOpenDay: (dayId: string) => void;
+  onPreviewDays: (days: MenuDay[]) => void;
+  onCommitDays: (days: MenuDay[]) => void;
+  onToggleItem: (id: string) => void;
+  onAddItem: (name: string) => void;
 }) {
-  const [days, setDays] = useState(() => cloneDays(menu.days));
   const [lift, setLift] = useState<Lift | null>(() =>
     menuPersisted
       ? null
       : {
-          meal: { ...stagedDrag.meal, diets: [...stagedDrag.meal.diets] },
+          meal: { ...stagedDrag.meal, ingredients: stagedDrag.meal.ingredients.map((item) => ({ ...item })) },
           fromDayId: stagedDrag.fromDayId,
           targetDayId: stagedDrag.targetDayId,
           live: false,
@@ -58,80 +68,41 @@ export function MiddagBoard({
           top: STAGED_TOP,
         },
   );
-  const [aisles, setAisles] = useState(() => cloneAisles(menu.aisles));
   const [adding, setAdding] = useState(false);
   const [draftItem, setDraftItem] = useState("");
   const daysRef = useRef<HTMLDivElement>(null);
   const daysState = useRef(days);
   const liftState = useRef(lift);
-  const savedDays = useRef(cloneDays(menu.days));
-  const originals = useRef(new Map(menu.days.flatMap((day) => (day.meal ? [[day.meal.id, day.meal.title] as const] : []))));
+  const dragToken = useRef(0);
+  const tokenAtStart = useRef(0);
+  const seenWeek = useRef(week);
   daysState.current = days;
   liftState.current = lift;
 
-  const todayKey = clock.numericDate.slice(0, 5);
-  const weekNumber = isoWeekNumber(menu.startsOn.year, menu.startsOn.month, menu.startsOn.day);
+  useEffect(() => {
+    if (seenWeek.current === week) return;
+    seenWeek.current = week;
+    dragToken.current += 1;
+    liftState.current = null;
+    setLift(null);
+  }, [week]);
+
+  const [year, month, day] = week.split("-").map(Number);
+  const weekNumber = isoWeekNumber(year, month, day);
   const itemCount = aisles.reduce((sum, aisle) => sum + aisle.items.length, 0);
-
-  function updateMeal(id: string, patch: Partial<Meal>) {
-    setDays((current) =>
-      current.map((day) =>
-        day.meal?.id === id ? { ...day, meal: { ...day.meal, ...patch, diets: day.meal.diets } } : day,
-      ),
-    );
-    setLift((current) => (current?.meal.id === id ? { ...current, meal: { ...current.meal, ...patch } } : current));
-  }
-
-  function editMeal(id: string) {
-    setDays((current) =>
-      current.map((day) =>
-        day.meal ? { ...day, meal: { ...day.meal, editing: day.meal.id === id } } : day,
-      ),
-    );
-  }
-
-  function cancelEdit(meal: Meal) {
-    updateMeal(meal.id, { editing: false, title: originals.current.get(meal.id) ?? meal.title });
-  }
-
-  function persistDays(next: MenuDay[]) {
-    if (!menuPersisted) return;
-    const snapshot = cloneDays(next);
-    void writeJson("/api/dinner", "PATCH", dinnerBody(snapshot)).then((ok) => {
-      if (ok) {
-        savedDays.current = snapshot;
-        return;
-      }
-      const restored = cloneDays(savedDays.current);
-      daysState.current = restored;
-      setDays(restored);
-      setLift(null);
-    });
-  }
-
-  function saveEdit(meal: Meal) {
-    const title = meal.title.trim();
-    if (!title) {
-      cancelEdit(meal);
-      return;
-    }
-    originals.current.set(meal.id, title);
-    const next = days.map((day) =>
-      day.meal?.id === meal.id ? { ...day, meal: { ...day.meal, editing: false, title } } : day,
-    );
-    daysState.current = next;
-    setDays(next);
-    persistDays(next);
-  }
 
   function finishDrag() {
     const drag = liftState.current;
-    if (!drag?.live) return;
+    if (!drag?.live || tokenAtStart.current !== dragToken.current) {
+      liftState.current = null;
+      setLift(null);
+      return;
+    }
     const next = cloneDays(daysState.current);
-    const from = next.find((day) => day.id === drag.fromDayId);
+    const from = next.find((entry) => entry.id === drag.fromDayId);
     const targetId = drag.targetDayId;
     if (from && targetId && targetId !== drag.fromDayId) {
-      const target = next.find((day) => day.id === targetId);
+      const target = next.find((entry) => entry.id === targetId);
       if (target) {
         const displaced = target.meal;
         target.meal = drag.meal;
@@ -142,9 +113,8 @@ export function MiddagBoard({
     }
     daysState.current = next;
     liftState.current = null;
-    setDays(next);
     setLift(null);
-    persistDays(next);
+    onCommitDays(next);
   }
 
   function trackDrag(event: PointerEvent) {
@@ -154,11 +124,10 @@ export function MiddagBoard({
     const rect = root.getBoundingClientRect();
     const left = event.clientX - rect.left - FLOAT_WIDTH / 2;
     const top = event.clientY - rect.top - 36;
-    const previous = root.style.pointerEvents;
     const floater = root.querySelector("[data-lift]") as HTMLElement | null;
     if (floater) floater.style.pointerEvents = "none";
     const hit = document.elementFromPoint(event.clientX, event.clientY);
-    if (floater) floater.style.pointerEvents = previous;
+    if (floater) floater.style.pointerEvents = "";
     const targetDayId = hit?.closest("[data-day]")?.getAttribute("data-day") ?? null;
     const next = { ...drag, live: true, left, top, targetDayId };
     liftState.current = next;
@@ -179,10 +148,11 @@ export function MiddagBoard({
 
   function liftFromDay(event: React.PointerEvent, dayId: string) {
     event.preventDefault();
+    tokenAtStart.current = dragToken.current;
     const nextDays = cloneDays(daysState.current);
     const currentLift = liftState.current;
     if (currentLift) {
-      const from = nextDays.find((day) => day.id === currentLift.fromDayId);
+      const from = nextDays.find((entry) => entry.id === currentLift.fromDayId);
       if (from && !from.meal) from.meal = currentLift.meal;
     }
     const day = nextDays.find((entry) => entry.id === dayId);
@@ -192,7 +162,7 @@ export function MiddagBoard({
     const nextLift: Lift = { meal, fromDayId: dayId, targetDayId: null, live: true, left: 0, top: 0 };
     daysState.current = nextDays;
     liftState.current = nextLift;
-    setDays(nextDays);
+    onPreviewDays(nextDays);
     setLift(nextLift);
     attachDrag(event.nativeEvent);
   }
@@ -200,65 +170,20 @@ export function MiddagBoard({
   function liftExisting(event: React.PointerEvent) {
     event.preventDefault();
     if (!liftState.current) return;
+    tokenAtStart.current = dragToken.current;
     attachDrag(event.nativeEvent);
-  }
-
-  function toggleItem(id: string) {
-    const item = aisles.flatMap((aisle) => aisle.items).find((entry) => entry.id === id);
-    if (!item) return;
-    const done = !item.done;
-    setAisles((current) =>
-      current.map((aisle) => ({
-        ...aisle,
-        items: aisle.items.map((entry) => (entry.id === id ? { ...entry, done } : entry)),
-      })),
-    );
-    if (!shoppingPersisted) return;
-    void writeJson("/api/shopping", "PATCH", { id, done }).then((ok) => {
-      if (ok) return;
-      setAisles((current) =>
-        current.map((aisle) => ({
-          ...aisle,
-          items: aisle.items.map((entry) => (entry.id === id && entry.done === done ? { ...entry, done: !done } : entry)),
-        })),
-      );
-    });
   }
 
   function saveItem() {
     const name = draftItem.trim();
-    if (!name) {
-      setAdding(false);
-      setDraftItem("");
-      return;
-    }
-    const aisleId = aisles[aisles.length - 1]?.id;
-    const item = { id: crypto.randomUUID(), name, quantity: "1 stk" };
-    setAisles((current) => {
-      const next = cloneAisles(current);
-      const aisle = next[next.length - 1];
-      aisle?.items.push(item);
-      return next;
-    });
     setAdding(false);
     setDraftItem("");
-    if (!shoppingPersisted || !aisleId) return;
-    void writeJson("/api/shopping", "POST", { ...item, aisleId }).then((ok) => {
-      if (ok) return;
-      setAisles((current) =>
-        current.map((aisle) => ({
-          ...aisle,
-          items: aisle.items.filter((entry) => entry.id !== item.id),
-        })),
-      );
-    });
+    if (!name) return;
+    onAddItem(name);
   }
 
   return (
-    <div
-      data-region="middag"
-      style={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "row", gap: 20 }}
-    >
+    <div data-region="middag" data-week={week} style={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "row", gap: 20 }}>
       <section
         data-region="menu"
         style={{
@@ -274,22 +199,13 @@ export function MiddagBoard({
           borderRadius: "var(--r-tile)",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
-          <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 14 }}>
-            <h1 style={titleStyle}>Ukemeny</h1>
-            <div
-              style={{
-                fontFamily: "var(--font-data)",
-                fontSize: 15,
-                lineHeight: "normal",
-                fontWeight: 400,
-                color: "var(--text-muted)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Uke {weekNumber} · {menu.period}
-            </div>
+        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 14, width: "100%" }}>
+          <h1 style={titleStyle}>Ukemeny</h1>
+          <div style={periodStyle}>
+            Uke {weekNumber} · {period}
           </div>
+          <WeekButtons enabled={menuPersisted} onPrevious={() => onShift(week, -1)} onNext={() => onShift(week, 1)} />
+          <div style={{ flex: 1 }} />
           <div
             style={{
               display: "flex",
@@ -308,77 +224,36 @@ export function MiddagBoard({
             </span>
           </div>
         </div>
-        <div
-          ref={daysRef}
-          style={{ position: "relative", flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column", gap: 10 }}
-        >
-          {days.map((day) => {
-            const today = day.date === todayKey;
+        <div ref={daysRef} style={{ position: "relative", flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
+          {days.map((day, index) => {
+            const today = dayIsToday(clock, week, index);
             const source = lift?.fromDayId === day.id;
             const target = lift?.targetDayId === day.id;
             return (
-              <div
-                key={day.id}
-                data-day={day.id}
-                style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", alignItems: "center", gap: 12, width: "100%" }}
-              >
+              <div key={day.id} data-day={day.id} style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "row", alignItems: "center", gap: 12, width: "100%" }}>
                 <div style={{ width: 92, flexShrink: 0, display: "flex", flexDirection: "column", gap: 2, padding: "0 2px" }}>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-heading)",
-                      fontSize: 16,
-                      lineHeight: "normal",
-                      fontWeight: 400,
-                      color: today ? "var(--accent)" : "var(--text)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                  <div style={{ fontFamily: "var(--font-heading)", fontSize: 16, lineHeight: "normal", fontWeight: 400, color: today ? "var(--accent)" : "var(--text)", whiteSpace: "nowrap" }}>
                     {today ? "i dag" : day.weekday}
                   </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-data)",
-                      fontSize: 12,
-                      lineHeight: "normal",
-                      fontWeight: 400,
-                      color: "var(--text-muted)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                  <div style={{ fontFamily: "var(--font-data)", fontSize: 12, lineHeight: "normal", fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                     {day.date}
                   </div>
                 </div>
                 {source || !day.meal ? (
-                  <div
-                    style={{
-                      flex: 1,
-                      height: "100%",
-                      minWidth: 0,
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      borderRadius: "var(--r-nested)",
-                      outline: "1.5px solid color-mix(in srgb, var(--text) 14%, transparent)",
-                      outlineOffset: -0.75,
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    <Move size={16} color="var(--text-muted)" />
-                    <span style={{ fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal", fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-                      {lift && source ? `${lift.meal.title} flyttes herfra` : "Ledig"}
-                    </span>
-                  </div>
+                  lift && source ? (
+                    <EmptyDay label={`${lift.meal.title} flyttes herfra`} />
+                  ) : (
+                    <button type="button" aria-label={`Legg til middag ${day.weekday}`} onClick={() => onOpenDay(day.id)} style={emptyButton}>
+                      <Move size={16} color="var(--text-muted)" />
+                      <span style={emptyLabel}>Ledig</span>
+                    </button>
+                  )
                 ) : (
                   <MealCard
                     meal={day.meal}
                     target={target}
                     onGrip={(event) => liftFromDay(event, day.id)}
-                    onEdit={() => editMeal(day.meal!.id)}
-                    onTitle={(title) => updateMeal(day.meal!.id, { title })}
-                    onCancel={() => cancelEdit(day.meal!)}
-                    onSave={() => saveEdit(day.meal!)}
+                    onOpen={() => onOpenDay(day.id)}
                   />
                 )}
               </div>
@@ -433,19 +308,7 @@ export function MiddagBoard({
       >
         <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
           <h2 style={titleStyle}>Handleliste</h2>
-          <div
-            style={{
-              padding: "6px 12px",
-              borderRadius: "var(--r-full)",
-              background: "var(--tile-2)",
-              fontFamily: "var(--font-body)",
-              fontSize: 14,
-              lineHeight: "normal",
-              fontWeight: 400,
-              color: "var(--text-2)",
-              whiteSpace: "nowrap",
-            }}
-          >
+          <div style={{ padding: "6px 12px", borderRadius: "var(--r-full)", background: "var(--tile-2)", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal", fontWeight: 400, color: "var(--text-2)", whiteSpace: "nowrap" }}>
             {itemCount} varer
           </div>
         </div>
@@ -455,20 +318,10 @@ export function MiddagBoard({
             Oppdateres fra ukemenyen
           </span>
         </div>
-        <div style={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column", gap: 14, overflow: "hidden" }}>
+        <div style={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column", gap: 14, overflow: "auto" }}>
           {aisles.map((aisle) => (
             <div key={aisle.id} style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
-              <div
-                style={{
-                  fontFamily: "var(--font-body)",
-                  fontSize: 12,
-                  lineHeight: "normal",
-                  fontWeight: 400,
-                  letterSpacing: "1.4px",
-                  color: "var(--text-muted)",
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <div style={{ fontFamily: "var(--font-body)", fontSize: 12, lineHeight: "normal", fontWeight: 400, letterSpacing: "1.4px", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                 {aisle.label}
               </div>
               {aisle.items.map((item) => (
@@ -477,7 +330,7 @@ export function MiddagBoard({
                     type="button"
                     aria-pressed={Boolean(item.done)}
                     aria-label={item.done ? `Merk ${item.name} som ikke kjøpt` : `Kjøp ${item.name}`}
-                    onClick={() => toggleItem(item.id)}
+                    onClick={() => onToggleItem(item.id)}
                     style={{
                       width: 20,
                       height: 20,
@@ -496,29 +349,10 @@ export function MiddagBoard({
                   >
                     {item.done ? <Check size={13} color="var(--ink)" strokeWidth={2.5} /> : null}
                   </button>
-                  <div
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                      fontFamily: "var(--font-body)",
-                      fontSize: 14,
-                      lineHeight: "normal",
-                      fontWeight: 400,
-                      color: item.done ? "var(--text-muted)" : "var(--text)",
-                    }}
-                  >
+                  <div style={{ flex: 1, minWidth: 0, fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal", fontWeight: 400, color: item.done ? "var(--text-muted)" : "var(--text)" }}>
                     {item.name}
                   </div>
-                  <div
-                    style={{
-                      fontFamily: "var(--font-data)",
-                      fontSize: 12,
-                      lineHeight: "normal",
-                      fontWeight: 400,
-                      color: "var(--text-muted)",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
+                  <div style={{ fontFamily: "var(--font-data)", fontSize: 12, lineHeight: "normal", fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
                     {item.quantity}
                   </div>
                 </div>
@@ -532,36 +366,14 @@ export function MiddagBoard({
               event.preventDefault();
               saveItem();
             }}
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 12px",
-              borderRadius: "var(--r-nested)",
-              background: "var(--tile-2)",
-              outline: "1.5px solid var(--accent)",
-              outlineOffset: -0.75,
-            }}
+            style={{ width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "row", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--r-nested)", background: "var(--tile-2)", outline: "1.5px solid var(--accent)", outlineOffset: -0.75 }}
           >
             <input
               aria-label="Ny vare"
               autoFocus
               value={draftItem}
               onChange={(event) => setDraftItem(event.target.value)}
-              style={{
-                flex: 1,
-                minWidth: 0,
-                border: "none",
-                outline: "none",
-                background: "transparent",
-                color: "var(--text)",
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-                lineHeight: "normal",
-              }}
+              style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--text)", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal" }}
             />
             <button type="button" onClick={() => { setAdding(false); setDraftItem(""); }} style={ghostPill}>
               Avbryt
@@ -571,31 +383,7 @@ export function MiddagBoard({
             </button>
           </form>
         ) : (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            style={{
-              width: "100%",
-              height: 46,
-              flexShrink: 0,
-              display: "flex",
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-              border: "none",
-              background: "transparent",
-              cursor: "pointer",
-              outline: "1.5px solid color-mix(in srgb, var(--text) 14%, transparent)",
-              outlineOffset: -0.75,
-              borderRadius: "var(--r-nested)",
-              fontFamily: "var(--font-body)",
-              fontSize: 14,
-              lineHeight: "normal",
-              fontWeight: 400,
-              color: "var(--text-muted)",
-            }}
-          >
+          <button type="button" onClick={() => setAdding(true)} style={addButton}>
             <Plus size={18} color="var(--text-muted)" />
             Legg til vare
           </button>
@@ -605,28 +393,29 @@ export function MiddagBoard({
   );
 }
 
+function EmptyDay({ label }: { label: string }) {
+  return (
+    <div style={emptyButton}>
+      <Move size={16} color="var(--text-muted)" />
+      <span style={emptyLabel}>{label}</span>
+    </div>
+  );
+}
+
 function MealCard({
   meal,
   target,
   onGrip,
-  onEdit,
-  onTitle,
-  onCancel,
-  onSave,
+  onOpen,
 }: {
   meal: Meal;
   target: boolean;
   onGrip: (event: React.PointerEvent) => void;
-  onEdit: () => void;
-  onTitle: (title: string) => void;
-  onCancel: () => void;
-  onSave: () => void;
+  onOpen: () => void;
 }) {
-  const editing = Boolean(meal.editing);
   return (
     <article
       data-meal={meal.id}
-      data-editing={editing ? "true" : undefined}
       data-target={target ? "true" : undefined}
       style={{
         flex: 1,
@@ -644,112 +433,29 @@ function MealCard({
         outlineOffset: target ? -0.75 : undefined,
       }}
     >
-      <button
-        type="button"
-        aria-label={`Flytt ${meal.title}`}
-        onPointerDown={onGrip}
-        style={gripButton}
-      >
+      <button type="button" aria-label={`Flytt ${meal.title}`} onPointerDown={onGrip} style={gripButton}>
         <GripVertical size={18} color={target ? "var(--accent)" : "var(--text-muted)"} />
       </button>
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 7 }}>
-        {editing ? (
-          <TitleField value={meal.title} onChange={onTitle} onSave={onSave} />
-        ) : (
-          <div style={dishStyle}>{meal.title}</div>
-        )}
-        <MealMeta meal={meal} />
-      </div>
-      {editing ? (
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <button type="button" onClick={onCancel} style={ghostPill}>
-            Avbryt
-          </button>
-          <button type="button" onClick={onSave} style={savePill}>
-            Lagre
-          </button>
-        </div>
-      ) : (
-        <button type="button" aria-label={`Rediger ${meal.title}`} onClick={onEdit} style={gripButton}>
-          <Pencil size={16} color="var(--text-muted)" />
-        </button>
-      )}
+      <button type="button" aria-label={`Ingredienser for ${meal.title}`} onClick={onOpen} style={cardButton}>
+        <MealBody meal={meal} />
+      </button>
+      <button type="button" aria-label={`Rediger ${meal.title}`} onClick={onOpen} style={{ ...gripButton, cursor: "pointer" }}>
+        <Pencil size={16} color="var(--text-muted)" />
+      </button>
     </article>
   );
 }
 
 function MealBody({ meal }: { meal: Meal }) {
   return (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 7 }}>
+    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 7, textAlign: "left" }}>
       <div style={dishStyle}>{meal.title}</div>
-      <MealMeta meal={meal} />
-    </div>
-  );
-}
-
-function MealMeta({ meal }: { meal: Meal }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 7 }}>
-      {meal.diets.map((diet) => (
-        <span
-          key={diet}
-          style={{
-            padding: "4px 9px",
-            borderRadius: "var(--r-full)",
-            background: "var(--tile-3)",
-            fontFamily: "var(--font-body)",
-            fontSize: 12,
-            lineHeight: "normal",
-            fontWeight: 400,
-            color: "var(--text-2)",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {diet}
-        </span>
-      ))}
-      <span style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 5, paddingLeft: 3, color: "var(--text-muted)" }}>
+      <span style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 5, color: "var(--text-muted)" }}>
         <Timer size={13} color="var(--text-muted)" />
         <span style={{ fontFamily: "var(--font-body)", fontSize: 12, lineHeight: "normal", fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
           {meal.minutes} min
         </span>
       </span>
-    </div>
-  );
-}
-
-function TitleField({ value, onChange, onSave }: { value: string; onChange: (value: string) => void; onSave: () => void }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 3, maxWidth: "100%" }}>
-      <span style={{ position: "relative", display: "inline-flex", maxWidth: "100%", minWidth: 2 }}>
-        <span aria-hidden style={{ ...dishStyle, visibility: "hidden", whiteSpace: "pre" }}>
-          {value || " "}
-        </span>
-        <input
-          aria-label={value || "Rett"}
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              onSave();
-            }
-          }}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            margin: 0,
-            padding: 0,
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            caretColor: "transparent",
-            ...dishStyle,
-          }}
-        />
-      </span>
-      <span aria-hidden style={{ width: 2, height: 20, flexShrink: 0, background: "var(--accent)" }} />
     </div>
   );
 }
@@ -764,6 +470,15 @@ const titleStyle = {
   whiteSpace: "nowrap" as const,
 };
 
+const periodStyle = {
+  fontFamily: "var(--font-data)",
+  fontSize: 15,
+  lineHeight: "normal",
+  fontWeight: 400,
+  color: "var(--text-muted)",
+  whiteSpace: "nowrap" as const,
+};
+
 const dishStyle = {
   fontFamily: "var(--font-heading)",
   fontSize: 18,
@@ -771,6 +486,33 @@ const dishStyle = {
   fontWeight: 400,
   color: "var(--text)",
   whiteSpace: "nowrap" as const,
+};
+
+const emptyLabel = {
+  fontFamily: "var(--font-body)",
+  fontSize: 14,
+  lineHeight: "normal",
+  fontWeight: 400,
+  color: "var(--text-muted)",
+  whiteSpace: "nowrap" as const,
+};
+
+const emptyButton = {
+  flex: 1,
+  height: "100%",
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "row" as const,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  border: "none",
+  borderRadius: "var(--r-nested)",
+  background: "transparent",
+  cursor: "pointer",
+  outline: "1.5px solid color-mix(in srgb, var(--text) 14%, transparent)",
+  outlineOffset: -0.75,
+  color: "var(--text-muted)",
 };
 
 const gripButton = {
@@ -785,6 +527,17 @@ const gripButton = {
   color: "var(--text-muted)",
 };
 
+const cardButton = {
+  flex: 1,
+  minWidth: 0,
+  display: "flex",
+  padding: 0,
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  color: "inherit",
+};
+
 const pillBase = {
   padding: "8px 14px",
   border: "none",
@@ -797,14 +550,27 @@ const pillBase = {
   whiteSpace: "nowrap" as const,
 };
 
-const ghostPill = {
-  ...pillBase,
-  background: "var(--tile-3)",
-  color: "var(--text-2)",
-};
+const ghostPill = { ...pillBase, background: "var(--tile-3)", color: "var(--text-2)" };
+const savePill = { ...pillBase, background: "var(--accent)", color: "var(--ink)" };
 
-const savePill = {
-  ...pillBase,
-  background: "var(--accent)",
-  color: "var(--ink)",
+const addButton = {
+  width: "100%",
+  height: 46,
+  flexShrink: 0,
+  display: "flex",
+  flexDirection: "row" as const,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  border: "none",
+  background: "transparent",
+  cursor: "pointer",
+  outline: "1.5px solid color-mix(in srgb, var(--text) 14%, transparent)",
+  outlineOffset: -0.75,
+  borderRadius: "var(--r-nested)",
+  fontFamily: "var(--font-body)",
+  fontSize: 14,
+  lineHeight: "normal",
+  fontWeight: 400,
+  color: "var(--text-muted)",
 };

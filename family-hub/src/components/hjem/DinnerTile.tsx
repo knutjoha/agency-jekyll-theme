@@ -47,31 +47,11 @@ export function DinnerTile({ dinner }: { dinner: Dinner }) {
           flex: 1,
           display: "flex",
           flexDirection: "row",
-          justifyContent: "space-between",
+          justifyContent: "flex-end",
           alignItems: "flex-end",
           gap: 8,
         }}
       >
-        <div style={{ display: "flex", flexDirection: "row", gap: 8, alignItems: "center" }}>
-          {dinner.diets.map((diet) => (
-            <div
-              key={diet}
-              style={{
-                padding: "7px 12px",
-                borderRadius: "var(--r-full)",
-                background: "var(--tile-2)",
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-                lineHeight: 1,
-                fontWeight: 400,
-                color: "var(--text-2)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {diet}
-            </div>
-          ))}
-        </div>
         <div
           style={{
             display: "flex",

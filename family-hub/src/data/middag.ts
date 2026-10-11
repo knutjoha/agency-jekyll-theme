@@ -1,34 +1,23 @@
 import type { DinnerMenu, Meal, StagedDrag } from "./types";
 
-const meal = (id: string, title: string, minutes: number, diets: string[], editing?: boolean): Meal => ({
+const meal = (id: string, title: string, minutes: number): Meal => ({
   id,
   title,
   minutes,
-  diets,
-  ...(editing ? { editing: true } : {}),
+  ingredients: [],
 });
 
 export const dinnerMenu: DinnerMenu = {
   startsOn: { year: 2026, month: 9, day: 28 },
   period: "28.09 – 04.10",
   days: [
-    { id: "man", weekday: "mandag", date: "28.09", meal: meal("wok", "Kyllingwok med nudler", 30, ["Glutenfri"]) },
-    {
-      id: "tir",
-      weekday: "tirsdag",
-      date: "29.09",
-      meal: meal("laks-pasta", "Laksepasta", 25, ["Glutenfri", "Laktosefri"], true),
-    },
-    { id: "ons", weekday: "onsdag", date: "30.09", meal: meal("kjottkaker", "Kjøttkaker med potetmos", 45, ["Glutenfri"]) },
-    { id: "tor", weekday: "torsdag", date: "01.10", meal: meal("linsesuppe", "Linsesuppe", 35, ["Glutenfri", "Laktosefri"]) },
+    { id: "man", weekday: "mandag", date: "28.09", meal: meal("wok", "Kyllingwok med nudler", 30) },
+    { id: "tir", weekday: "tirsdag", date: "29.09", meal: meal("laks-pasta", "Laksepasta", 25) },
+    { id: "ons", weekday: "onsdag", date: "30.09", meal: meal("kjottkaker", "Kjøttkaker med potetmos", 45) },
+    { id: "tor", weekday: "torsdag", date: "01.10", meal: meal("linsesuppe", "Linsesuppe", 35) },
     { id: "fre", weekday: "fredag", date: "02.10", meal: null },
-    {
-      id: "lor",
-      weekday: "lørdag",
-      date: "03.10",
-      meal: meal("ovnslaks", "Ovnsbakt laks med poteter", 35, ["Glutenfri", "Laktosefri"]),
-    },
-    { id: "son", weekday: "søndag", date: "04.10", meal: meal("fiskegrateng", "Fiskegrateng", 40, ["Glutenfri"]) },
+    { id: "lor", weekday: "lørdag", date: "03.10", meal: meal("ovnslaks", "Ovnsbakt laks med poteter", 35) },
+    { id: "son", weekday: "søndag", date: "04.10", meal: meal("fiskegrateng", "Fiskegrateng", 40) },
   ],
   aisles: [
     {
@@ -69,11 +58,16 @@ export const dinnerMenu: DinnerMenu = {
         { id: "linser", name: "Linser", quantity: "1 pk" },
       ],
     },
+    {
+      id: "ukemeny",
+      label: "Fra ukemenyen",
+      items: [],
+    },
   ],
 };
 
 export const stagedDrag: StagedDrag = {
   fromDayId: "fre",
   targetDayId: "ons",
-  meal: meal("taco", "Taco", 25, ["Glutenfri"]),
+  meal: meal("taco", "Taco", 25),
 };

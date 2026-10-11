@@ -13,15 +13,22 @@ async function readJson(request: Request): Promise<unknown | null> {
   }
 }
 
-export async function GET() {
-  return NextResponse.json(await loadShopping(), { headers });
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  return NextResponse.json(
+    await loadShopping({
+      snapshot: url.searchParams.get("snapshot") === "1",
+      week: url.searchParams.get("week"),
+    }),
+    { headers },
+  );
 }
 
 export async function POST(request: Request) {
   const body = await readJson(request);
   if (body === null) return NextResponse.json({ persisted: false }, { status: 400, headers });
   const result = await createShoppingItem(body);
-  return NextResponse.json(result, { headers });
+  return NextResponse.json(result, { status: result.persisted ? 200 : 400, headers });
 }
 
 export async function PATCH(request: Request) {
