@@ -77,7 +77,7 @@ function PersonCard({ person }: { person: Person }) {
           >
             {person.name}
           </div>
-          <TransportPill transport={person.transport} compact />
+          {person.transport ? <TransportPill transport={person.transport} compact /> : null}
         </div>
         <div
           style={{

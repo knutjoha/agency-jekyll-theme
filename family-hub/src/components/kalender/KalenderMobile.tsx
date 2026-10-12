@@ -4,8 +4,8 @@ import { Plus, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { columnsFor } from "@/components/kalender/WeekGrid";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
-import { people } from "@/data/fixture";
-import type { CalendarSource, CalendarWeek, Person, WeatherView } from "@/data/types";
+import type { CalendarSource, CalendarWeek, LaneId, Person, WeatherView } from "@/data/types";
+import { calendarLane } from "@/lib/calendar-view";
 import { formatOslo, type OsloNow } from "@/lib/oslo";
 
 type AgendaItem = {
@@ -15,10 +15,8 @@ type AgendaItem = {
   warning: boolean;
 };
 
-function personFor(id: Person["id"]): Person {
-  const person = people.find((entry) => entry.id === id);
-  if (!person) throw new Error(`Missing person ${id}`);
-  return person;
+function personFor(id: LaneId): Person {
+  return calendarLane(id);
 }
 
 function fixtureTitle(person: Person, time: string, fallback: string): string {
@@ -27,7 +25,7 @@ function fixtureTitle(person: Person, time: string, fallback: string): string {
 
 function driverMissing(person: Person, time: string, blockWarning?: string): boolean {
   if (blockWarning) return true;
-  return person.transport.kind === "missing" && person.events.some((event) => event.time === time);
+  return person.transport?.kind === "missing" && person.events.some((event) => event.time === time);
 }
 
 function agendaFor(week: CalendarWeek, dayIndex: number, source: CalendarSource): AgendaItem[] {
@@ -60,13 +58,13 @@ function agendaFor(week: CalendarWeek, dayIndex: number, source: CalendarSource)
 function detailFor(item: AgendaItem, source: CalendarSource): string {
   const names = item.people.map((person) => person.name).join(" · ");
   if (item.warning) {
-    const missing = item.people.find((person) => person.transport.kind === "missing");
-    return `${names} · ${missing?.transport.label ?? "Sjåfør mangler"}`;
+    const missing = item.people.find((person) => person.transport?.kind === "missing");
+    return `${names} · ${missing?.transport?.label ?? "Sjåfør mangler"}`;
   }
   if (source === "fixture" && item.people.length === 1) {
     const person = item.people[0];
     const timed = person.events.filter((event) => event.time);
-    if (person.transport.kind === "assigned" && timed.length === 1 && timed[0].time === item.time) {
+    if (person.transport?.kind === "assigned" && timed.length === 1 && timed[0].time === item.time) {
       return `${names} · ${person.transport.label}`;
     }
   }

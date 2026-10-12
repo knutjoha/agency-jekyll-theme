@@ -93,7 +93,7 @@ export function PersonRow({ person }: { person: Person }) {
           alignItems: "center",
         }}
       >
-        <TransportPill transport={person.transport} />
+        {person.transport ? <TransportPill transport={person.transport} /> : null}
       </div>
     </div>
   );
