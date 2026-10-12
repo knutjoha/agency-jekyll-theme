@@ -1,17 +1,21 @@
 import { calendarWeek } from "../data/calendar";
 import { people } from "../data/fixture";
-import type { CalendarEvent, CalendarPayload, CalendarWeek, PersonId } from "../data/types";
+import type { CalendarEvent, CalendarPayload, CalendarWeek, LaneId, Person, PersonId } from "../data/types";
 import { osloDateKey, osloParts } from "./oslo";
 
 const PERSON_ORDER: PersonId[] = ["amelia", "hedda", "maja", "knut", "ulla"];
+const LIVE_LANES: LaneId[] = [...PERSON_ORDER, "family"];
 
-const PERSON_PATTERNS: { id: PersonId; pattern: RegExp }[] = [
-  { id: "amelia", pattern: /\bamelia\b/i },
-  { id: "hedda", pattern: /\bhedda\b/i },
-  { id: "maja", pattern: /\bmaja\b/i },
-  { id: "knut", pattern: /\bknut\b/i },
-  { id: "ulla", pattern: /\bulla(?:[\s-]+marie)?\b/i },
-];
+const LANE_PREFIX = /^(amelia|hedda|maja|knut|ulla(?:[ -]+marie)?):/i;
+
+const FAMILY_LANE: Person = {
+  id: "family",
+  name: "Family",
+  initial: "F",
+  detail: "",
+  colorToken: "--text-muted",
+  events: [],
+};
 
 export type CalendarEventInput = {
   summary?: string;
@@ -23,7 +27,7 @@ export type CalendarEventInput = {
 
 type TimedEvent = {
   title: string;
-  people: PersonId[];
+  lane: LaneId;
   kind: "timed";
   start: Date;
   end: Date;
@@ -31,7 +35,7 @@ type TimedEvent = {
 
 type AllDayEvent = {
   title: string;
-  people: PersonId[];
+  lane: LaneId;
   kind: "allday";
   startDate: string;
   endDate: string;
@@ -78,19 +82,39 @@ export function fixturePayload(): CalendarPayload {
 export function isCalendarPayload(value: unknown): value is CalendarPayload {
   if (!value || typeof value !== "object") return false;
   const payload = value as CalendarPayload;
+  if (payload.source !== "google" && payload.source !== "fixture") return false;
+  const lanes = payload.source === "google" ? LIVE_LANES : PERSON_ORDER;
   return (
-    (payload.source === "google" || payload.source === "fixture") &&
     Array.isArray(payload.todayPeople) &&
-    payload.todayPeople.length === PERSON_ORDER.length &&
+    payload.todayPeople.length === lanes.length &&
+    payload.todayPeople.every((person, index) => person?.id === lanes[index]) &&
     typeof payload.week?.startsOn === "string" &&
     Array.isArray(payload.week.rows) &&
-    payload.week.rows.length === PERSON_ORDER.length &&
-    payload.week.rows.every((row) => Array.isArray(row.days) && row.days.length === 7)
+    payload.week.rows.length === lanes.length &&
+    payload.week.rows.every(
+      (row, index) => row?.personId === lanes[index] && Array.isArray(row.days) && row.days.length === 7,
+    )
   );
 }
 
+export function calendarLane(id: LaneId): Person {
+  if (id === "family") return FAMILY_LANE;
+  const person = people.find((entry) => entry.id === id);
+  if (!person) throw new Error(`Missing person ${id}`);
+  return person;
+}
+
+function laneForTitle(title: string): LaneId {
+  const match = LANE_PREFIX.exec(title);
+  if (!match) return "family";
+  const head = match[1].toLowerCase();
+  if (head === "amelia" || head === "hedda" || head === "maja" || head === "knut") return head;
+  return "ulla";
+}
+
 export function peopleNamedIn(text: string): PersonId[] {
-  return PERSON_PATTERNS.filter(({ pattern }) => pattern.test(text)).map(({ id }) => id);
+  const lane = laneForTitle(text.replace(/\s+/g, " ").trim());
+  return lane === "family" ? [] : [lane];
 }
 
 function eventTitle(event: CalendarEventInput): string {
@@ -98,31 +122,30 @@ function eventTitle(event: CalendarEventInput): string {
   return title || "Uten tittel";
 }
 
-function peopleFor(event: CalendarEventInput): PersonId[] {
-  const named = peopleNamedIn(`${event.summary ?? ""}\n${event.description ?? ""}`);
-  return named.length > 0 ? named : PERSON_ORDER;
+function peopleFor(event: CalendarEventInput): LaneId {
+  return laneForTitle(eventTitle(event));
 }
 
 function placeEvent(event: CalendarEventInput): PlacedEvent | null {
   if (event.status === "cancelled") return null;
   const title = eventTitle(event);
-  const peopleIds = peopleFor(event);
+  const lane = peopleFor(event);
   const startTime = event.start?.dateTime;
   if (startTime) {
     const start = new Date(startTime);
     if (Number.isNaN(start.getTime())) return null;
     const end = event.end?.dateTime ? new Date(event.end.dateTime) : new Date(start.getTime() + 60 * 60 * 1000);
     if (Number.isNaN(end.getTime()) || end <= start) {
-      return { title, people: peopleIds, kind: "timed", start, end: new Date(start.getTime() + 60 * 60 * 1000) };
+      return { title, lane, kind: "timed", start, end: new Date(start.getTime() + 60 * 60 * 1000) };
     }
-    return { title, people: peopleIds, kind: "timed", start, end };
+    return { title, lane, kind: "timed", start, end };
   }
 
   const startDate = event.start?.date ? parseIsoDate(event.start.date) : null;
   if (!startDate) return null;
   const endDate = event.end?.date && parseIsoDate(event.end.date) ? event.end.date : addIsoDays(startDate, 1);
   if (endDate <= startDate) return null;
-  return { title, people: peopleIds, kind: "allday", startDate, endDate };
+  return { title, lane, kind: "allday", startDate, endDate };
 }
 
 function coversDay(event: PlacedEvent, iso: string): boolean {
@@ -145,13 +168,23 @@ function compareEvents(a: CalendarEvent, b: CalendarEvent): number {
   return a.title.localeCompare(b.title, "nb");
 }
 
-function eventsForPerson(events: CalendarEventInput[], personId: PersonId, iso: string): CalendarEvent[] {
+function eventsForPerson(events: CalendarEventInput[], laneId: LaneId, iso: string): CalendarEvent[] {
   const placed = events.flatMap((event) => {
     const item = placeEvent(event);
-    if (!item || !item.people.includes(personId) || !coversDay(item, iso)) return [];
+    if (!item || item.lane !== laneId || !coversDay(item, iso)) return [];
     return [{ time: timeLabel(item, iso), title: item.title }];
   });
   return placed.sort(compareEvents);
+}
+
+function activityDays(events: CalendarEventInput[], laneId: LaneId, days: string[]) {
+  return days.map((iso) => ({
+    blocks: eventsForPerson(events, laneId, iso).map((event) => ({
+      kind: "activity" as const,
+      time: event.time ?? "—",
+      title: event.title,
+    })),
+  }));
 }
 
 export function buildLivePayload(
@@ -167,25 +200,32 @@ export function buildLivePayload(
   const week: CalendarWeek = {
     startsOn: weekStart,
     notice: "",
-    rows: people.map((person) => ({
-      personId: person.id,
-      detail: details.get(person.id) ?? person.detail,
-      days: days.map((iso) => ({
-        blocks: eventsForPerson(weekEvents, person.id, iso).map((event) => ({
-          kind: "activity" as const,
-          time: event.time ?? "—",
-          title: event.title,
-        })),
+    rows: [
+      ...people.map((person) => ({
+        personId: person.id,
+        detail: details.get(person.id) ?? person.detail,
+        days: activityDays(weekEvents, person.id, days),
       })),
-    })),
+      {
+        personId: "family",
+        detail: "",
+        days: activityDays(weekEvents, "family", days),
+      },
+    ],
   };
 
   return {
     source: "google",
-    todayPeople: people.map((person) => ({
-      ...person,
-      events: eventsForPerson(todayEvents, person.id, today),
-    })),
+    todayPeople: [
+      ...people.map((person) => ({
+        ...person,
+        events: eventsForPerson(todayEvents, person.id, today),
+      })),
+      {
+        ...calendarLane("family"),
+        events: eventsForPerson(todayEvents, "family", today),
+      },
+    ],
     week,
   };
 }

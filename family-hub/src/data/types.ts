@@ -1,12 +1,15 @@
 export type PersonId = "amelia" | "hedda" | "maja" | "knut" | "ulla";
 
+export type LaneId = PersonId | "family";
+
 export type ColorToken =
   | "--p-amelia"
   | "--p-hedda"
   | "--p-maja"
   | "--p-knut"
   | "--p-ulla"
-  | "--accent";
+  | "--accent"
+  | "--text-muted";
 
 export type CalendarEvent = {
   time: string | null;
@@ -18,13 +21,13 @@ export type Transport =
   | { kind: "assigned"; label: string };
 
 export type Person = {
-  id: PersonId;
+  id: LaneId;
   name: string;
   initial: string;
   detail: string;
   colorToken: ColorToken;
   events: CalendarEvent[];
-  transport: Transport;
+  transport?: Transport;
 };
 
 export type Dinner = {
@@ -49,7 +52,7 @@ export type CalendarDay = {
 };
 
 export type CalendarRow = {
-  personId: PersonId;
+  personId: LaneId;
   detail: string;
   days: CalendarDay[];
 };

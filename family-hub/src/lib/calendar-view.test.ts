@@ -3,10 +3,12 @@ import test from "node:test";
 import { people } from "../data/fixture";
 import { calendarWeek } from "../data/calendar";
 import { osloMidnightUtc } from "./oslo";
+import type { CalendarPayload, LaneId } from "../data/types";
 import {
   addIsoDays,
   buildLivePayload,
   fixturePayload,
+  isCalendarPayload,
   mondayOf,
   parseIsoDate,
   peopleNamedIn,
@@ -32,13 +34,20 @@ test("monday of the snapshot saturday is 28 September 2026", () => {
   assert.equal(parseIsoDate("2026-10-03"), "2026-10-03");
 });
 
-test("person names in a title decide the row", () => {
+test("a title prefix decides one row", () => {
   assert.deepEqual(peopleNamedIn("Amelia: Håndballkamp"), ["amelia"]);
-  assert.deepEqual(peopleNamedIn("Amelia og Hedda kamp"), ["amelia", "hedda"]);
-  assert.deepEqual(peopleNamedIn("Ulla Marie arbeid"), ["ulla"]);
-  assert.deepEqual(peopleNamedIn("Ulla-Marie henter"), ["ulla"]);
+  assert.deepEqual(peopleNamedIn("Knut:Trening"), ["knut"]);
+  assert.deepEqual(peopleNamedIn("knut: Trening"), ["knut"]);
+  assert.deepEqual(peopleNamedIn("Ulla:"), ["ulla"]);
+  assert.deepEqual(peopleNamedIn("Ulla Marie:"), ["ulla"]);
+  assert.deepEqual(peopleNamedIn("Ulla-Marie:"), ["ulla"]);
+  assert.deepEqual(peopleNamedIn("Ulla  Marie: lege"), ["ulla"]);
+  assert.deepEqual(peopleNamedIn("Ulla Marie arbeid"), []);
+  assert.deepEqual(peopleNamedIn("Amelia og Hedda kamp"), []);
   assert.deepEqual(peopleNamedIn("Familiekveld"), []);
   assert.deepEqual(peopleNamedIn("Knutsson"), []);
+  assert.deepEqual(peopleNamedIn("Knutsson:"), []);
+  assert.deepEqual(peopleNamedIn("Knut : jobb"), []);
 });
 
 test("missing Google settings stay on the fixture", () => {
@@ -64,7 +73,27 @@ test("missing Google settings stay on the fixture", () => {
   assert.equal(payload.source, "fixture");
   assert.equal(payload.todayPeople, people);
   assert.equal(payload.week, calendarWeek);
+  assert.equal(payload.todayPeople.length, 5);
+  assert.equal(payload.week.rows.length, 5);
+  assert.equal(
+    payload.todayPeople.some((person) => person.id === "family"),
+    false,
+  );
+  assert.equal(isCalendarPayload(payload), true);
 });
+
+function titles(payload: CalendarPayload, id: LaneId): string[] {
+  return payload.todayPeople.find((person) => person.id === id)?.events.map((event) => event.title) ?? [];
+}
+
+function weekTitles(payload: CalendarPayload, id: LaneId, dayIndex: number): string[] {
+  const row = payload.week.rows.find((entry) => entry.personId === id);
+  return (
+    row?.days[dayIndex]?.blocks.flatMap((block) => (block.kind === "activity" ? [block.title] : [])) ?? []
+  );
+}
+
+const SATURDAY = 5;
 
 test("a connected calendar places named events and keeps an empty week empty", () => {
   const now = new Date("2026-10-03T05:42:00.000Z");
@@ -117,22 +146,31 @@ test("a connected calendar places named events and keeps an empty week empty", (
 
   const amelia = payload.todayPeople.find((person) => person.id === "amelia");
   assert.deepEqual(amelia?.events, [{ time: "09:00", title: "Amelia: Håndballkamp" }]);
-  assert.equal(amelia?.transport.kind, "missing");
+  assert.equal(amelia?.transport?.kind, "missing");
+  assert.deepEqual(titles(payload, "amelia"), ["Amelia: Håndballkamp"]);
+  assert.deepEqual(weekTitles(payload, "amelia", SATURDAY), ["Amelia: Håndballkamp"]);
 
-  const knut = payload.todayPeople.find((person) => person.id === "knut");
-  const ulla = payload.todayPeople.find((person) => person.id === "ulla");
-  assert.deepEqual(knut?.events, [{ time: "19:30", title: "Familiekveld" }]);
-  assert.deepEqual(ulla?.events, [{ time: "19:30", title: "Familiekveld" }]);
-
-  const hedda = payload.todayPeople.find((person) => person.id === "hedda");
-  assert.deepEqual(hedda?.events, []);
+  assert.deepEqual(titles(payload, "knut"), []);
+  assert.deepEqual(titles(payload, "ulla"), []);
+  assert.deepEqual(titles(payload, "hedda"), []);
+  assert.deepEqual(titles(payload, "family"), ["Familiekveld"]);
+  assert.deepEqual(weekTitles(payload, "family", SATURDAY), ["Familiekveld"]);
+  assert.equal(payload.week.rows[5]?.personId, "family");
+  assert.equal(payload.week.rows[5]?.detail, "");
+  assert.equal(
+    payload.week.rows.some((row) =>
+      row.days.some((day) => day.blocks.some((block) => block.kind === "activity" && block.title === "Avlyst")),
+    ),
+    false,
+  );
 
   const saturday = payload.week.rows[0]?.days[5];
   assert.deepEqual(saturday?.blocks, [{ kind: "activity", time: "09:00", title: "Amelia: Håndballkamp" }]);
   assert.equal(payload.week.rows[0]?.days[0]?.blocks.length, 0);
+  assert.equal(isCalendarPayload(payload), true);
 });
 
-test("an unnamed event is shown for every person, and an empty calendar is not the fixture", () => {
+test("an event without a name prefix goes to Family, and an empty calendar is not the fixture", () => {
   const now = new Date("2026-10-03T05:42:00.000Z");
   const household = buildLivePayload(
     [
@@ -152,15 +190,45 @@ test("an unnamed event is shown for every person, and an empty calendar is not t
     now,
     "2026-09-28",
   );
-  assert.equal(household.todayPeople.every((person) => person.events.length === 1), true);
+  assert.deepEqual(titles(household, "family"), ["Familiekveld"]);
+  assert.equal(
+    household.todayPeople.filter((person) => person.id !== "family").every((person) => person.events.length === 0),
+    true,
+  );
 
   const empty = buildLivePayload([], [], now, "2026-09-28");
   assert.equal(empty.source, "google");
+  assert.equal(empty.todayPeople.length, 6);
+  assert.equal(empty.week.rows.length, 6);
+  assert.deepEqual(
+    empty.todayPeople.map((person) => person.id),
+    ["amelia", "hedda", "maja", "knut", "ulla", "family"],
+  );
+  assert.deepEqual(
+    empty.week.rows.map((row) => row.personId),
+    ["amelia", "hedda", "maja", "knut", "ulla", "family"],
+  );
+  assert.equal(empty.week.rows[5]?.detail, "");
+  assert.equal(empty.week.rows[0]?.detail, "8A Ringstabekk");
   assert.equal(
     empty.todayPeople.every((person) => person.events.length === 0),
     true,
   );
+  assert.equal(
+    empty.week.rows.every((row) => row.days.every((day) => day.blocks.length === 0)),
+    true,
+  );
   assert.notEqual(empty.todayPeople[0]?.events, people[0]?.events);
+  assert.notEqual(empty.week, calendarWeek);
+  assert.equal(isCalendarPayload(empty), true);
+  assert.equal(
+    isCalendarPayload({
+      ...empty,
+      todayPeople: empty.todayPeople.slice(0, 5),
+      week: { ...empty.week, rows: empty.week.rows.slice(0, 5) },
+    }),
+    false,
+  );
 });
 
 test("all-day events use the em dash and stay inside Google's exclusive end date", () => {
@@ -183,12 +251,134 @@ test("all-day events use the em dash and stay inside Google's exclusive end date
     now,
     "2026-10-05",
   );
-  const maja = payload.todayPeople.find((person) => person.id === "maja");
-  assert.deepEqual(maja?.events, [{ time: null, title: "Maja leirskole" }]);
-  const monday = payload.week.rows[2]?.days[0]?.blocks[0];
+  const family = payload.todayPeople.find((person) => person.id === "family");
+  assert.deepEqual(family?.events, [{ time: null, title: "Maja leirskole" }]);
+  assert.deepEqual(titles(payload, "maja"), []);
+  const monday = payload.week.rows[5]?.days[0]?.blocks[0];
   assert.equal(monday?.kind, "activity");
   assert.equal(monday?.kind === "activity" ? monday.time : "", "—");
-  assert.equal(payload.week.rows[2]?.days[1]?.blocks.length, 1);
-  assert.equal(payload.week.rows[2]?.days[2]?.blocks.length, 0);
+  assert.equal(payload.week.rows[5]?.days[1]?.blocks.length, 1);
+  assert.equal(payload.week.rows[5]?.days[2]?.blocks.length, 0);
+  assert.equal(payload.week.rows[2]?.days[0]?.blocks.length, 0);
   assert.equal(payload.week.rows[0]?.days[0]?.blocks.length, 0);
+});
+
+test("name prefixes land on one row, and everything else lands on Family", () => {
+  const now = new Date("2026-10-03T05:42:00.000Z");
+  const events = [
+    {
+      summary: "Amelia: Håndballkamp",
+      start: { dateTime: "2026-10-03T09:00:00+02:00" },
+      end: { dateTime: "2026-10-03T10:30:00+02:00" },
+    },
+    {
+      summary: "Knut:Trening",
+      start: { dateTime: "2026-10-03T08:00:00+02:00" },
+      end: { dateTime: "2026-10-03T09:00:00+02:00" },
+    },
+    {
+      summary: "knut: Trening",
+      start: { dateTime: "2026-10-03T10:00:00+02:00" },
+      end: { dateTime: "2026-10-03T11:00:00+02:00" },
+    },
+    {
+      summary: "Ulla:",
+      start: { dateTime: "2026-10-03T11:00:00+02:00" },
+      end: { dateTime: "2026-10-03T12:00:00+02:00" },
+    },
+    {
+      summary: "Ulla Marie: middag",
+      start: { dateTime: "2026-10-03T18:00:00+02:00" },
+      end: { dateTime: "2026-10-03T19:00:00+02:00" },
+    },
+    {
+      summary: "Ulla-Marie: jobb",
+      start: { dateTime: "2026-10-03T07:00:00+02:00" },
+      end: { dateTime: "2026-10-03T08:00:00+02:00" },
+    },
+    {
+      summary: "Ulla Marie arbeid",
+      start: { dateTime: "2026-10-03T12:00:00+02:00" },
+      end: { dateTime: "2026-10-03T13:00:00+02:00" },
+    },
+    {
+      summary: "Knut: henter Ulla Marie",
+      start: { dateTime: "2026-10-03T15:00:00+02:00" },
+      end: { dateTime: "2026-10-03T16:00:00+02:00" },
+    },
+    {
+      summary: "Familiekveld",
+      description: "Knut og Ulla Marie",
+      start: { dateTime: "2026-10-03T19:30:00+02:00" },
+      end: { dateTime: "2026-10-03T21:00:00+02:00" },
+    },
+    {
+      summary: "Maja leirskole",
+      start: { dateTime: "2026-10-03T13:00:00+02:00" },
+      end: { dateTime: "2026-10-03T14:00:00+02:00" },
+    },
+    {
+      summary: "Knutsson: møte",
+      start: { dateTime: "2026-10-03T14:00:00+02:00" },
+      end: { dateTime: "2026-10-03T14:30:00+02:00" },
+    },
+    {
+      summary: "Knut : jobb",
+      start: { dateTime: "2026-10-03T16:30:00+02:00" },
+      end: { dateTime: "2026-10-03T17:00:00+02:00" },
+    },
+    {
+      summary: "Avlyst",
+      status: "cancelled",
+      start: { dateTime: "2026-10-03T12:00:00+02:00" },
+      end: { dateTime: "2026-10-03T13:00:00+02:00" },
+    },
+    {
+      summary: "Ulla Marie: Knut: middag",
+      description: "Amelia",
+      start: { dateTime: "2026-10-03T20:00:00+02:00" },
+      end: { dateTime: "2026-10-03T21:00:00+02:00" },
+    },
+    {
+      summary: "   ",
+      description: "Knut",
+      start: { dateTime: "2026-10-03T06:00:00+02:00" },
+      end: { dateTime: "2026-10-03T06:30:00+02:00" },
+    },
+    {
+      summary: "Amelia og Hedda: kamp",
+      start: { dateTime: "2026-10-03T17:00:00+02:00" },
+      end: { dateTime: "2026-10-03T18:00:00+02:00" },
+    },
+  ];
+  const payload = buildLivePayload(events, events, now, "2026-09-28");
+
+  assert.deepEqual(titles(payload, "amelia"), ["Amelia: Håndballkamp"]);
+  assert.deepEqual(weekTitles(payload, "amelia", SATURDAY), ["Amelia: Håndballkamp"]);
+  assert.deepEqual(titles(payload, "knut"), ["Knut:Trening", "knut: Trening", "Knut: henter Ulla Marie"]);
+  assert.deepEqual(weekTitles(payload, "knut", SATURDAY), ["Knut:Trening", "knut: Trening", "Knut: henter Ulla Marie"]);
+  assert.deepEqual(titles(payload, "ulla"), ["Ulla-Marie: jobb", "Ulla:", "Ulla Marie: middag", "Ulla Marie: Knut: middag"]);
+  assert.deepEqual(titles(payload, "hedda"), []);
+  assert.deepEqual(titles(payload, "maja"), []);
+  assert.deepEqual(titles(payload, "family"), [
+    "Uten tittel",
+    "Ulla Marie arbeid",
+    "Maja leirskole",
+    "Knutsson: møte",
+    "Knut : jobb",
+    "Amelia og Hedda: kamp",
+    "Familiekveld",
+  ]);
+  assert.deepEqual(weekTitles(payload, "family", SATURDAY), titles(payload, "family"));
+  assert.equal(payload.todayPeople.at(-1)?.id, "family");
+  assert.equal(payload.todayPeople.at(-1)?.name, "Family");
+  assert.equal(payload.todayPeople.at(-1)?.detail, "");
+  assert.equal(payload.todayPeople.at(-1)?.colorToken, "--text-muted");
+  assert.equal(payload.todayPeople.at(-1)?.transport, undefined);
+  assert.equal(
+    payload.week.rows.some((row) =>
+      row.days.some((day) => day.blocks.some((block) => block.kind === "activity" && block.title === "Avlyst")),
+    ),
+    false,
+  );
 });

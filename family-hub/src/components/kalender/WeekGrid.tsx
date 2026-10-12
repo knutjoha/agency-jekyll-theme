@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { people } from "@/data/fixture";
-import type { CalendarSource, CalendarWeek, Person } from "@/data/types";
+import type { CalendarSource, CalendarWeek, LaneId, Person } from "@/data/types";
 import { DayCell } from "@/components/kalender/DayCell";
+import { calendarLane } from "@/lib/calendar-view";
 import { isoWeekNumber, type OsloNow } from "@/lib/oslo";
 
 const WEEKDAYS = ["man", "tir", "ons", "tor", "fre", "lør", "søn"] as const;
@@ -52,10 +52,8 @@ export function columnsFor(
   };
 }
 
-function personFor(id: Person["id"]): Person {
-  const person = people.find((entry) => entry.id === id);
-  if (!person) throw new Error(`Missing person ${id}`);
-  return person;
+function personFor(id: LaneId): Person {
+  return calendarLane(id);
 }
 
 export function WeekGrid({
