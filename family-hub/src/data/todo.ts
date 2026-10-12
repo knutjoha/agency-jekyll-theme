@@ -1,47 +1,65 @@
-import type { TodoLane } from "./types";
+import type { TodoLane, TodoTask } from "./types";
+import { dueFields } from "@/lib/frist";
+import { SNAPSHOT_AT, osloDateKey } from "@/lib/oslo";
+
+const snapshotDay = osloDateKey(SNAPSHOT_AT);
+
+function task(
+  id: string,
+  title: string,
+  options?: { dueOn?: string; done?: boolean; editing?: boolean },
+): TodoTask {
+  return {
+    id,
+    title,
+    ...(options?.dueOn ? dueFields(options.dueOn, snapshotDay) : {}),
+    ...(options?.done ? { done: true } : {}),
+    ...(options?.editing ? { editing: true } : {}),
+  };
+}
 
 export const todoLanes: TodoLane[] = [
   {
     personId: "knut",
     detail: "Pappa",
     tasks: [
-      { id: "knut-eu", title: "Bestille EU-kontroll", due: "31.10 · Tesla Model X" },
-      { id: "knut-pass", title: "Fornye pass for Maja", due: "12.11" },
-      { id: "knut-dekk", title: "Sjekke dekk før hyttetur", due: "i morgen" },
-      { id: "knut-kontingent", title: "Betale håndball-kontingent", done: true },
+      task("knut-eu", "Bestille EU-kontroll", { dueOn: "2026-10-31" }),
+      task("knut-pass", "Fornye pass for Maja", { dueOn: "2026-11-12" }),
+      task("knut-dekk", "Sjekke dekk før hyttetur", { dueOn: "2026-10-04" }),
+      task("knut-kontingent", "Betale håndball-kontingent", { done: true }),
     ],
   },
   {
     personId: "ulla",
     detail: "Mamma",
     tasks: [
-      { id: "ulla-samtykke", title: "Svare på leirskole-samtykke", due: "06.10 · Maja · Jar skole" },
-      { id: "ulla-mote", title: "Melde på foreldremøte 8B", due: "09.10" },
-      { id: "ulla-gave", title: "Kjøpe gave til tvillingene", due: "18.10" },
+      task("ulla-samtykke", "Svare på leirskole-samtykke", { dueOn: "2026-10-06" }),
+      task("ulla-mote", "Melde på foreldremøte 8B", { dueOn: "2026-10-09" }),
+      task("ulla-gave", "Kjøpe gave til tvillingene", { dueOn: "2026-10-18" }),
     ],
   },
   {
     personId: "amelia",
     detail: "8A",
     tasks: [
-      { id: "amelia-bag", title: "Pakke håndballbag", due: "i dag" },
-      { id: "amelia-prove", title: "Lese til naturfagsprøve", due: "tirsdag" },
+      task("amelia-bag", "Pakke håndballbag", { dueOn: "2026-10-03" }),
+      task("amelia-prove", "Lese til naturfagsprøve", { dueOn: "2026-10-06" }),
     ],
   },
   {
     personId: "hedda",
     detail: "8B",
     tasks: [
-      { id: "hedda-norsk", title: "Levere innlevering i norsk", due: "i går", overdue: true },
-      { id: "hedda-hytte", title: "Pakke til hytta", due: "søndag" },
+      task("hedda-norsk", "Levere innlevering i norsk", { dueOn: "2026-10-02" }),
+      task("hedda-hytte", "Pakke til hytta", { dueOn: "2026-10-11" }),
     ],
   },
   {
     personId: "maja",
     detail: "6C",
     tasks: [
-      { id: "maja-cheer", title: "Øve på cheer-rutine", due: "i dag" },
-      { id: "maja-rom", title: "Rydde rommet", editing: true },
+      task("maja-cheer", "Øve på cheer-rutine", { dueOn: "2026-10-03" }),
+      task("maja-rom", "Rydde rommet", { editing: true }),
     ],
   },
 ];

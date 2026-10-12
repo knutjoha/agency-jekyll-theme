@@ -17,6 +17,8 @@ create table if not exists public.todos (
   description text not null default '',
   -- Shown as typed ("31.10 · Tesla Model X", "i morgen"). Not always a date.
   due_label text,
+  -- Calendar frist. The screen derives the label from this date and does not read due_label.
+  due_on date,
   done boolean not null default false,
   overdue boolean not null default false,
   sort_order integer not null,
