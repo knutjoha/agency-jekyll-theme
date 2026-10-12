@@ -1,6 +1,5 @@
 import type { Person } from "@/data/types";
 import { EventChip } from "@/components/hjem/EventChip";
-import { TransportPill } from "@/components/hjem/TransportPill";
 
 export function PersonRow({ person }: { person: Person }) {
   return (
@@ -83,17 +82,6 @@ export function PersonRow({ person }: { person: Person }) {
         {person.events.map((event, index) => (
           <EventChip key={`${event.time ?? "none"}-${event.title}-${index}`} event={event} />
         ))}
-      </div>
-      <div
-        style={{
-          width: 175,
-          flexShrink: 0,
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-        }}
-      >
-        {person.transport ? <TransportPill transport={person.transport} /> : null}
       </div>
     </div>
   );

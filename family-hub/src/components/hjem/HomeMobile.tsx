@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { TransportPill } from "@/components/hjem/TransportPill";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { soon } from "@/data/fixture";
 import type { CalendarEvent, Person, SoonItem, WeatherView } from "@/data/types";
@@ -77,7 +76,6 @@ function PersonCard({ person }: { person: Person }) {
           >
             {person.name}
           </div>
-          {person.transport ? <TransportPill transport={person.transport} compact /> : null}
         </div>
         <div
           style={{
