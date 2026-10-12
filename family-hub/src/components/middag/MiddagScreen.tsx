@@ -11,6 +11,8 @@ import type { HallwayData } from "@/lib/hallway";
 import { dinnerBody, writeJson, writeJsonResult } from "@/lib/persist-client";
 
 const SAVE_ERROR = "Fikk ikke lagret middagen. Prøv igjen.";
+const WEEK_PLAN_ERROR = "Fikk ikke laget forslag. Prøv igjen.";
+const DAY_PLAN_ERROR = "Fikk ikke byttet dagen. Prøv igjen.";
 
 function cloneDays(days: MenuDay[]): MenuDay[] {
   return days.map((day) => ({
@@ -59,6 +61,10 @@ export function MiddagScreen({
   const daysRef = useRef(days);
   const editorRef = useRef(editor);
   const savedDays = useRef(cloneDays(menu.days));
+  const planLock = useRef(false);
+  const [planBusy, setPlanBusy] = useState<string | null>(null);
+  const [planWeekError, setPlanWeekError] = useState<string | null>(null);
+  const [planDayError, setPlanDayError] = useState<string | null>(null);
   weekRef.current = week;
   daysRef.current = days;
   editorRef.current = editor;
@@ -111,6 +117,8 @@ export function MiddagScreen({
     requestedWeek.current = next;
     setWeekQuery(next);
     setEditor(null);
+    setPlanWeekError(null);
+    setPlanDayError(null);
   }
 
   function openDay(dayId: string) {
@@ -274,6 +282,44 @@ export function MiddagScreen({
     setEditor(null);
   }
 
+  async function runPlan(body: { scope: "week" } | { scope: "day"; week: string; dayId: string }) {
+    if (!menuPersisted || planLock.current) return;
+    const at = weekRef.current;
+    planLock.current = true;
+    setPlanBusy(body.scope === "week" ? "week" : body.dayId);
+    setPlanWeekError(null);
+    setPlanDayError(null);
+    try {
+      const saved = await writeJsonResult("/api/dinner/plan", "POST", body);
+      const stillHere = (requestedWeek.current === null || requestedWeek.current === at) && weekRef.current === at;
+      if (!saved?.persisted) {
+        if (!stillHere) return;
+        if (body.scope === "week") setPlanWeekError(WEEK_PLAN_ERROR);
+        else setPlanDayError(DAY_PLAN_ERROR);
+        return;
+      }
+      if (!stillHere || saved.week !== at) return;
+      if (isMenuDays(saved.days)) {
+        const nextDays = cloneDays(saved.days);
+        setDays(nextDays);
+        savedDays.current = nextDays;
+      }
+      if (isAisles(saved.aisles)) setAisles(cloneAisles(saved.aisles));
+      setEditor(null);
+    } finally {
+      planLock.current = false;
+      setPlanBusy(null);
+    }
+  }
+
+  function planWeek() {
+    void runPlan({ scope: "week" });
+  }
+
+  function planDay(dayId: string) {
+    void runPlan({ scope: "day", week: weekRef.current, dayId });
+  }
+
   const editorDay = editor ? days.find((day) => day.id === editor.dayId) : null;
   const shared = {
     week,
@@ -282,12 +328,17 @@ export function MiddagScreen({
     aisles,
     menuPersisted,
     shoppingPersisted,
+    planBusy,
+    planWeekError,
+    planDayError,
     onShift,
     onOpenDay: openDay,
     onPreviewDays: previewDays,
     onCommitDays: commitDays,
     onToggleItem: toggleItem,
     onAddItem: addItem,
+    onPlanWeek: planWeek,
+    onPlanDay: planDay,
   };
 
   return (

@@ -36,12 +36,17 @@ export function MiddagBoard({
   days,
   aisles,
   menuPersisted,
+  planBusy,
+  planWeekError,
+  planDayError,
   onShift,
   onOpenDay,
   onPreviewDays,
   onCommitDays,
   onToggleItem,
   onAddItem,
+  onPlanWeek,
+  onPlanDay,
 }: {
   clock: OsloNow;
   week: string;
@@ -49,12 +54,17 @@ export function MiddagBoard({
   days: MenuDay[];
   aisles: GroceryAisle[];
   menuPersisted: boolean;
+  planBusy: string | null;
+  planWeekError: string | null;
+  planDayError: string | null;
   onShift: (startsOn: string, deltaWeeks: number) => void;
   onOpenDay: (dayId: string) => void;
   onPreviewDays: (days: MenuDay[]) => void;
   onCommitDays: (days: MenuDay[]) => void;
   onToggleItem: (id: string) => void;
   onAddItem: (name: string) => void;
+  onPlanWeek: () => void;
+  onPlanDay: (dayId: string) => void;
 }) {
   const [lift, setLift] = useState<Lift | null>(() =>
     menuPersisted
@@ -75,6 +85,7 @@ export function MiddagBoard({
   const liftState = useRef(lift);
   const dragToken = useRef(0);
   const tokenAtStart = useRef(0);
+  const dragActive = useRef(false);
   const seenWeek = useRef(week);
   daysState.current = days;
   liftState.current = lift;
@@ -96,6 +107,9 @@ export function MiddagBoard({
     if (!drag?.live || tokenAtStart.current !== dragToken.current) {
       liftState.current = null;
       setLift(null);
+      window.setTimeout(() => {
+        dragActive.current = false;
+      }, 0);
       return;
     }
     const next = cloneDays(daysState.current);
@@ -114,6 +128,9 @@ export function MiddagBoard({
     daysState.current = next;
     liftState.current = null;
     setLift(null);
+    window.setTimeout(() => {
+      dragActive.current = false;
+    }, 0);
     onCommitDays(next);
   }
 
@@ -157,6 +174,7 @@ export function MiddagBoard({
     }
     const day = nextDays.find((entry) => entry.id === dayId);
     if (!day?.meal) return;
+    dragActive.current = true;
     const meal = day.meal;
     day.meal = null;
     const nextLift: Lift = { meal, fromDayId: dayId, targetDayId: null, live: true, left: 0, top: 0 };
@@ -170,8 +188,19 @@ export function MiddagBoard({
   function liftExisting(event: React.PointerEvent) {
     event.preventDefault();
     if (!liftState.current) return;
+    dragActive.current = true;
     tokenAtStart.current = dragToken.current;
     attachDrag(event.nativeEvent);
+  }
+
+  function requestWeek() {
+    if (dragActive.current || liftState.current) return;
+    onPlanWeek();
+  }
+
+  function requestDay(dayId: string) {
+    if (dragActive.current || liftState.current) return;
+    onPlanDay(dayId);
   }
 
   function saveItem() {
@@ -206,6 +235,17 @@ export function MiddagBoard({
           </div>
           <WeekButtons enabled={menuPersisted} onPrevious={() => onShift(week, -1)} onNext={() => onShift(week, 1)} />
           <div style={{ flex: 1 }} />
+          {menuPersisted ? (
+            <button
+              type="button"
+              data-plan="week"
+              disabled={planBusy !== null}
+              onClick={requestWeek}
+              style={{ ...suggestPill, opacity: planBusy !== null ? 0.6 : 1, cursor: planBusy !== null ? "default" : "pointer" }}
+            >
+              {planBusy === "week" ? "Lager forslag…" : "Lag et forslag"}
+            </button>
+          ) : null}
           <div
             style={{
               display: "flex",
@@ -224,6 +264,8 @@ export function MiddagBoard({
             </span>
           </div>
         </div>
+        {menuPersisted && planWeekError ? <div role="alert" style={planErrorStyle}>{planWeekError}</div> : null}
+        {menuPersisted && planDayError ? <div role="alert" style={planErrorStyle}>{planDayError}</div> : null}
         <div ref={daysRef} style={{ position: "relative", flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column", gap: 10 }}>
           {days.map((day, index) => {
             const today = dayIsToday(clock, week, index);
@@ -252,10 +294,28 @@ export function MiddagBoard({
                   <MealCard
                     meal={day.meal}
                     target={target}
+                    refresh={
+                      menuPersisted ? (
+                        <DayRefresh
+                          weekday={day.weekday}
+                          busy={planBusy === day.id}
+                          disabled={planBusy !== null}
+                          onClick={() => requestDay(day.id)}
+                        />
+                      ) : null
+                    }
                     onGrip={(event) => liftFromDay(event, day.id)}
                     onOpen={() => onOpenDay(day.id)}
                   />
                 )}
+                {menuPersisted && (source || !day.meal) ? (
+                  <DayRefresh
+                    weekday={day.weekday}
+                    busy={planBusy === day.id}
+                    disabled={planBusy !== null}
+                    onClick={() => requestDay(day.id)}
+                  />
+                ) : null}
               </div>
             );
           })}
@@ -402,14 +462,42 @@ function EmptyDay({ label }: { label: string }) {
   );
 }
 
+function DayRefresh({
+  weekday,
+  busy,
+  disabled,
+  onClick,
+}: {
+  weekday: string;
+  busy: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-plan="day"
+      aria-label={`Nytt forslag for ${weekday}`}
+      aria-busy={busy || undefined}
+      disabled={disabled}
+      onClick={onClick}
+      style={{ ...gripButton, flexShrink: 0, cursor: disabled ? "default" : "pointer", opacity: disabled && !busy ? 0.45 : 1 }}
+    >
+      <RefreshCw size={16} color="var(--text-muted)" className={busy ? "dinner-spin" : undefined} />
+    </button>
+  );
+}
+
 function MealCard({
   meal,
   target,
+  refresh,
   onGrip,
   onOpen,
 }: {
   meal: Meal;
   target: boolean;
+  refresh: React.ReactNode;
   onGrip: (event: React.PointerEvent) => void;
   onOpen: () => void;
 }) {
@@ -439,6 +527,7 @@ function MealCard({
       <button type="button" aria-label={`Ingredienser for ${meal.title}`} onClick={onOpen} style={cardButton}>
         <MealBody meal={meal} />
       </button>
+      {refresh}
       <button type="button" aria-label={`Rediger ${meal.title}`} onClick={onOpen} style={{ ...gripButton, cursor: "pointer" }}>
         <Pencil size={16} color="var(--text-muted)" />
       </button>
@@ -552,6 +641,29 @@ const pillBase = {
 
 const ghostPill = { ...pillBase, background: "var(--tile-3)", color: "var(--text-2)" };
 const savePill = { ...pillBase, background: "var(--accent)", color: "var(--ink)" };
+
+const suggestPill = {
+  display: "flex",
+  alignItems: "center",
+  flexShrink: 0,
+  padding: "7px 13px",
+  border: "none",
+  borderRadius: "var(--r-full)",
+  background: "var(--accent)",
+  color: "var(--ink)",
+  fontFamily: "var(--font-body)",
+  fontSize: 14,
+  lineHeight: "normal",
+  fontWeight: 400,
+  whiteSpace: "nowrap" as const,
+};
+
+const planErrorStyle = {
+  fontFamily: "var(--font-body)",
+  fontSize: 13,
+  lineHeight: 1.3,
+  color: "var(--accent)",
+};
 
 const addButton = {
   width: "100%",

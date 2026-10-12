@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Check, ChevronRight, GripVertical, Move, Pencil, Plus, ShoppingBasket } from "lucide-react";
+import { Check, ChevronRight, GripVertical, Move, Pencil, Plus, RefreshCw, ShoppingBasket } from "lucide-react";
 import { WeekButtons, dayIsToday } from "@/components/middag/DinnerEditor";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { stagedDrag } from "@/data/middag";
@@ -48,12 +48,17 @@ export function MiddagMobile({
   days,
   aisles,
   menuPersisted,
+  planBusy,
+  planWeekError,
+  planDayError,
   onShift,
   onOpenDay,
   onPreviewDays,
   onCommitDays,
   onToggleItem,
   onAddItem,
+  onPlanWeek,
+  onPlanDay,
   editor,
 }: {
   clock: OsloNow;
@@ -63,12 +68,17 @@ export function MiddagMobile({
   days: MenuDay[];
   aisles: GroceryAisle[];
   menuPersisted: boolean;
+  planBusy: string | null;
+  planWeekError: string | null;
+  planDayError: string | null;
   onShift: (startsOn: string, deltaWeeks: number) => void;
   onOpenDay: (dayId: string) => void;
   onPreviewDays: (days: MenuDay[]) => void;
   onCommitDays: (days: MenuDay[]) => void;
   onToggleItem: (id: string) => void;
   onAddItem: (name: string) => void;
+  onPlanWeek: () => void;
+  onPlanDay: (dayId: string) => void;
   editor: ReactNode;
 }) {
   const [view, setView] = useState<View>("meny");
@@ -91,6 +101,7 @@ export function MiddagMobile({
   const liftState = useRef(lift);
   const dragToken = useRef(0);
   const tokenAtStart = useRef(0);
+  const dragActive = useRef(false);
   const seenWeek = useRef(week);
   daysState.current = days;
   liftState.current = lift;
@@ -113,6 +124,9 @@ export function MiddagMobile({
     if (!drag?.live || tokenAtStart.current !== dragToken.current) {
       liftState.current = null;
       setLift(null);
+      window.setTimeout(() => {
+        dragActive.current = false;
+      }, 0);
       return;
     }
     const next = cloneDays(daysState.current);
@@ -131,6 +145,9 @@ export function MiddagMobile({
     daysState.current = next;
     liftState.current = null;
     setLift(null);
+    window.setTimeout(() => {
+      dragActive.current = false;
+    }, 0);
     onCommitDays(next);
   }
 
@@ -174,6 +191,7 @@ export function MiddagMobile({
     }
     const day = nextDays.find((entry) => entry.id === dayId);
     if (!day?.meal) return;
+    dragActive.current = true;
     const meal = day.meal;
     day.meal = null;
     const nextLift: Lift = { meal, fromDayId: dayId, targetDayId: null, live: true, left: 0, top: 0 };
@@ -187,8 +205,19 @@ export function MiddagMobile({
   function liftExisting(event: ReactPointerEvent) {
     event.preventDefault();
     if (!liftState.current) return;
+    dragActive.current = true;
     tokenAtStart.current = dragToken.current;
     attachDrag(event.nativeEvent);
+  }
+
+  function requestWeek() {
+    if (dragActive.current || liftState.current) return;
+    onPlanWeek();
+  }
+
+  function requestDay(dayId: string) {
+    if (dragActive.current || liftState.current) return;
+    onPlanDay(dayId);
   }
 
   function saveItem() {
@@ -210,6 +239,21 @@ export function MiddagMobile({
           </div>
           <WeekButtons enabled={menuPersisted} onPrevious={() => onShift(week, -1)} onNext={() => onShift(week, 1)} />
         </div>
+      ) : null}
+      {menuPersisted && view === "meny" && !editor ? (
+        <>
+          <button
+            type="button"
+            data-plan="week"
+            disabled={planBusy !== null}
+            onClick={requestWeek}
+            style={{ ...suggestButton, opacity: planBusy !== null ? 0.6 : 1, cursor: planBusy !== null ? "default" : "pointer" }}
+          >
+            {planBusy === "week" ? "Lager forslag…" : "Lag et forslag"}
+          </button>
+          {planWeekError ? <div role="alert" style={planErrorStyle}>{planWeekError}</div> : null}
+          {planDayError ? <div role="alert" style={planErrorStyle}>{planDayError}</div> : null}
+        </>
       ) : null}
       {editor ? (
         editor
@@ -256,8 +300,29 @@ export function MiddagMobile({
                       </button>
                     )
                   ) : (
-                    <MealRow meal={day.meal} onOpen={() => onOpenDay(day.id)} />
+                    <MealRow
+                      meal={day.meal}
+                      onOpen={() => onOpenDay(day.id)}
+                      refresh={
+                        menuPersisted ? (
+                          <DayRefresh
+                            weekday={day.weekday}
+                            busy={planBusy === day.id}
+                            disabled={planBusy !== null}
+                            onClick={() => requestDay(day.id)}
+                          />
+                        ) : null
+                      }
+                    />
                   )}
+                  {menuPersisted && empty ? (
+                    <DayRefresh
+                      weekday={day.weekday}
+                      busy={planBusy === day.id}
+                      disabled={planBusy !== null}
+                      onClick={() => requestDay(day.id)}
+                    />
+                  ) : null}
                 </div>
               );
             })}
@@ -394,13 +459,40 @@ function MealCopy({ meal }: { meal: Meal }) {
   );
 }
 
-function MealRow({ meal, onOpen }: { meal: Meal; onOpen: () => void }) {
+function DayRefresh({
+  weekday,
+  busy,
+  disabled,
+  onClick,
+}: {
+  weekday: string;
+  busy: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      data-plan="day"
+      aria-label={`Nytt forslag for ${weekday}`}
+      aria-busy={busy || undefined}
+      disabled={disabled}
+      onClick={onClick}
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, padding: 0, border: "none", background: "transparent", cursor: disabled ? "default" : "pointer", flexShrink: 0, opacity: disabled && !busy ? 0.45 : 1 }}
+    >
+      <RefreshCw size={14} color="var(--text-muted)" className={busy ? "dinner-spin" : undefined} />
+    </button>
+  );
+}
+
+function MealRow({ meal, onOpen, refresh }: { meal: Meal; onOpen: () => void; refresh: ReactNode }) {
   return (
     <>
       <button type="button" aria-label={`Ingredienser for ${meal.title}`} onClick={onOpen} style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 3, padding: 0, border: "none", background: "transparent", cursor: "pointer", textAlign: "left" }}>
         <div style={phoneTitle}>{meal.title}</div>
         <div style={phoneDetail}>{detailFor(meal)}</div>
       </button>
+      {refresh}
       <button type="button" aria-label={`Rediger ${meal.title}`} onClick={onOpen} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, padding: 0, border: "none", background: "transparent", cursor: "pointer", flexShrink: 0 }}>
         <Pencil size={14} color="var(--text-muted)" />
       </button>
@@ -526,6 +618,26 @@ const dropButton = {
   outline: "1.5px solid #ffffff24",
   outlineOffset: -0.75,
   color: "var(--text-muted)",
+};
+
+const suggestButton = {
+  width: "100%",
+  height: 44,
+  border: "none",
+  borderRadius: "var(--r-full)",
+  background: "var(--accent)",
+  color: "var(--ink)",
+  fontFamily: "var(--font-body)",
+  fontSize: 15,
+  lineHeight: "normal",
+  fontWeight: 400,
+};
+
+const planErrorStyle = {
+  fontFamily: "var(--font-body)",
+  fontSize: 13,
+  lineHeight: 1.3,
+  color: "var(--accent)",
 };
 
 const listLink = {

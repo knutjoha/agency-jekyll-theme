@@ -146,3 +146,13 @@ body {
     display: block;
   }
 }
+
+@keyframes dinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dinner-spin {
+  animation: dinner-spin 0.8s linear infinite;
+}
