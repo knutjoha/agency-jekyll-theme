@@ -521,40 +521,37 @@ function ShoppingList({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {aisles.map((aisle) => (
-        <div key={aisle.id} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontFamily: "var(--font-body)", fontSize: 12, lineHeight: 1, fontWeight: 400, letterSpacing: "1.4px", color: "var(--text-muted)" }}>{aisle.label}</div>
-          {aisle.items.map((item) => (
-            <div key={item.id} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 11 }}>
-              <button
-                type="button"
-                aria-pressed={Boolean(item.done)}
-                aria-label={item.done ? `Merk ${item.name} som ikke kjøpt` : `Kjøp ${item.name}`}
-                onClick={() => onToggle(item.id)}
-                style={{
-                  width: 20,
-                  height: 20,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: 0,
-                  border: "none",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  background: item.done ? "var(--ok)" : "transparent",
-                  outline: item.done ? "none" : "1.5px solid var(--text-muted)",
-                  outlineOffset: item.done ? undefined : -0.75,
-                }}
-              >
-                {item.done ? <Check size={13} color="var(--ink)" strokeWidth={2.5} /> : null}
-              </button>
-              <div style={{ flex: 1, minWidth: 0, fontFamily: "var(--font-body)", fontSize: 14, lineHeight: 1.2, fontWeight: 400, color: item.done ? "var(--text-muted)" : "var(--text)" }}>{item.name}</div>
-              <div style={{ fontFamily: "var(--font-data)", fontSize: 12, lineHeight: 1, fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{item.quantity}</div>
-            </div>
-          ))}
-        </div>
-      ))}
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {aisles.flatMap((aisle) => aisle.items).map((item) => (
+          <div key={item.id} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 11 }}>
+            <button
+              type="button"
+              aria-pressed={Boolean(item.done)}
+              aria-label={item.done ? `Merk ${item.name} som ikke kjøpt` : `Kjøp ${item.name}`}
+              onClick={() => onToggle(item.id)}
+              style={{
+                width: 20,
+                height: 20,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                border: "none",
+                borderRadius: 6,
+                cursor: "pointer",
+                background: item.done ? "var(--ok)" : "transparent",
+                outline: item.done ? "none" : "1.5px solid var(--text-muted)",
+                outlineOffset: item.done ? undefined : -0.75,
+              }}
+            >
+              {item.done ? <Check size={13} color="var(--ink)" strokeWidth={2.5} /> : null}
+            </button>
+            <div style={{ flex: 1, minWidth: 0, fontFamily: "var(--font-body)", fontSize: 14, lineHeight: 1.2, fontWeight: 400, color: item.done ? "var(--text-muted)" : "var(--text)" }}>{item.name}</div>
+            <div style={{ fontFamily: "var(--font-data)", fontSize: 12, lineHeight: 1, fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{item.quantity}</div>
+          </div>
+        ))}
+      </div>
       {adding ? (
         <form onSubmit={(event) => { event.preventDefault(); onSave(); }} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--r-nested)", background: "var(--tile)", outline: "1.5px solid var(--accent)", outlineOffset: -0.75 }}>
           <input aria-label="Ny vare" autoFocus value={draftItem} onChange={(event) => onDraft(event.target.value)} style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--text)", fontFamily: "var(--font-body)", fontSize: 14 }} />
