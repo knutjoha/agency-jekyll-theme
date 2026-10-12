@@ -1,5 +1,7 @@
 import type { DinnerMenu, GroceryAisle, Ingredient, Meal, MenuDay, PersonId, TodoLane, TodoTask } from "../../data/types";
 import { addIsoDays, parseIsoDate } from "../calendar-view";
+import { dueFields, parseDueOn } from "../frist";
+import { osloDateKey } from "../oslo";
 
 export const DAY_IDS = ["man", "tir", "ons", "tor", "fre", "lor", "son"] as const;
 const PERSON_IDS: PersonId[] = ["knut", "ulla", "amelia", "hedda", "maja"];
@@ -11,9 +13,8 @@ export type TodoRow = {
   person_id: string;
   title: string;
   description: string;
-  due_label: string | null;
+  due_on: string | null;
   done: boolean;
-  overdue: boolean;
   sort_order: number;
 };
 
@@ -105,12 +106,20 @@ export type TodoCreate = {
   id: string;
   personId: PersonId;
   title: string;
+  dueOn: string | null;
+  done: boolean;
+  sortOrder: number | null;
 };
 
 export type TodoPatch = {
   id: string;
   title?: string;
   done?: boolean;
+  dueOn?: string | null;
+};
+
+export type TodoDelete = {
+  id: string;
 };
 
 export type ShoppingCreate = {
@@ -148,7 +157,7 @@ function isPersonId(value: string): value is PersonId {
   return PERSON_IDS.includes(value as PersonId);
 }
 
-export function lanesFromRows(rows: TodoRow[], lanes: LaneTemplate[]): TodoLane[] {
+export function lanesFromRows(rows: TodoRow[], lanes: LaneTemplate[], today = osloDateKey(new Date())): TodoLane[] {
   const grouped = new Map<string, TodoRow[]>();
   for (const row of rows) {
     const list = grouped.get(row.person_id) ?? [];
@@ -162,17 +171,24 @@ export function lanesFromRows(rows: TodoRow[], lanes: LaneTemplate[]): TodoLane[
     tasks: (grouped.get(lane.personId) ?? [])
       .slice()
       .sort((left, right) => left.sort_order - right.sort_order || left.id.localeCompare(right.id))
-      .map(taskFromRow),
+      .map((row) => taskFromRow(row, today)),
   }));
 }
 
-function taskFromRow(row: TodoRow): TodoTask {
+function dueOnFromRow(value: string | null): string | null {
+  if (!value) return null;
+  const parsed = parseDueOn(value.slice(0, 10));
+  return typeof parsed === "string" ? parsed : null;
+}
+
+function taskFromRow(row: TodoRow, today: string): TodoTask {
+  const dueOn = dueOnFromRow(row.due_on);
   return {
     id: row.id,
     title: row.title,
-    ...(row.due_label ? { due: row.due_label } : {}),
+    ...dueFields(dueOn, today),
     ...(row.done ? { done: true } : {}),
-    ...(row.overdue ? { overdue: true } : {}),
+    sortOrder: row.sort_order,
   };
 }
 
@@ -320,13 +336,30 @@ export function aislesFromRows(aisles: AisleRow[], items: ItemRow[]): GroceryAis
     }));
 }
 
+function parseOptionalDue(input: Record<string, unknown>, required: boolean): string | null | undefined {
+  if (!("dueOn" in input)) return required ? null : undefined;
+  return parseDueOn(input.dueOn);
+}
+
 export function parseTodoCreate(input: unknown): Parsed<TodoCreate> {
   if (!isRecord(input)) return { ok: false };
   const id = cleanId(input.id);
   const personId = typeof input.personId === "string" && isPersonId(input.personId) ? input.personId : null;
   const title = cleanText(input.title, 200);
-  if (!id || !personId || !title) return { ok: false };
-  return { ok: true, value: { id, personId, title } };
+  const dueOn = parseOptionalDue(input, true);
+  if (!id || !personId || !title || dueOn === undefined) return { ok: false };
+  let done = false;
+  if ("done" in input) {
+    if (typeof input.done !== "boolean") return { ok: false };
+    done = input.done;
+  }
+  let sortOrder: number | null = null;
+  if ("sortOrder" in input) {
+    const value = input.sortOrder;
+    if (typeof value !== "number" || !Number.isSafeInteger(value)) return { ok: false };
+    sortOrder = value;
+  }
+  return { ok: true, value: { id, personId, title, dueOn, done, sortOrder } };
 }
 
 export function parseTodoPatch(input: unknown): Parsed<TodoPatch> {
@@ -343,8 +376,20 @@ export function parseTodoPatch(input: unknown): Parsed<TodoPatch> {
     if (typeof input.done !== "boolean") return { ok: false };
     patch.done = input.done;
   }
-  if (patch.title === undefined && patch.done === undefined) return { ok: false };
+  if ("dueOn" in input) {
+    const dueOn = parseDueOn(input.dueOn);
+    if (dueOn === undefined) return { ok: false };
+    patch.dueOn = dueOn;
+  }
+  if (patch.title === undefined && patch.done === undefined && !("dueOn" in patch)) return { ok: false };
   return { ok: true, value: patch };
+}
+
+export function parseTodoDelete(input: unknown): Parsed<TodoDelete> {
+  if (!isRecord(input)) return { ok: false };
+  const id = cleanId(input.id);
+  if (!id) return { ok: false };
+  return { ok: true, value: { id } };
 }
 
 export function parseDinnerDays(input: unknown): Parsed<DinnerWeekWrite> {

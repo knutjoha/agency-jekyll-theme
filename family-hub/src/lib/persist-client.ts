@@ -7,14 +7,18 @@ export type SavedDinner = {
   aisles?: GroceryAisle[];
 };
 
-export async function writeJson(path: string, method: "POST" | "PATCH" | "PUT", body: unknown): Promise<boolean> {
+export async function writeJson(
+  path: string,
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
+  body: unknown,
+): Promise<boolean> {
   const saved = await writeJsonResult(path, method, body);
   return saved?.persisted === true;
 }
 
 export async function writeJsonResult(
   path: string,
-  method: "POST" | "PATCH" | "PUT",
+  method: "POST" | "PATCH" | "PUT" | "DELETE",
   body: unknown,
 ): Promise<SavedDinner | null> {
   try {

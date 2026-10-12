@@ -17,6 +17,7 @@ import {
   parseShoppingPatch,
   parseStartsOn,
   parseTodoCreate,
+  parseTodoDelete,
   parseTodoPatch,
   type AisleRow,
   type DinnerDayRow,
@@ -114,7 +115,7 @@ export async function loadTodos(options?: { snapshot?: boolean }): Promise<TodoL
 
   const { data, error } = await supabase
     .from("todos")
-    .select("id, person_id, title, description, due_label, done, overdue, sort_order")
+    .select("id, person_id, title, description, due_on, done, sort_order")
     .order("sort_order", { ascending: true });
 
   if (error || !data) {
@@ -196,26 +197,30 @@ export async function createTodo(input: unknown): Promise<WriteResult> {
   const supabase = getSupabase();
   if (!supabase) return { persisted: false };
 
-  const { data: latest, error: latestError } = await supabase
-    .from("todos")
-    .select("sort_order")
-    .eq("person_id", parsed.value.personId)
-    .order("sort_order", { ascending: false })
-    .limit(1);
+  let sortOrder = parsed.value.sortOrder;
+  if (sortOrder === null) {
+    const { data: latest, error: latestError } = await supabase
+      .from("todos")
+      .select("sort_order")
+      .eq("person_id", parsed.value.personId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
 
-  if (latestError) {
-    logFailure("todo sort", latestError);
-    return { persisted: false };
+    if (latestError) {
+      logFailure("todo sort", latestError);
+      return { persisted: false };
+    }
+
+    sortOrder = ((latest?.[0] as { sort_order?: number } | undefined)?.sort_order ?? -1) + 1;
   }
-
-  const sortOrder = ((latest?.[0] as { sort_order?: number } | undefined)?.sort_order ?? -1) + 1;
   const { error } = await supabase.from("todos").insert({
     id: parsed.value.id,
     person_id: parsed.value.personId,
     title: parsed.value.title,
     description: "",
     due_label: null,
-    done: false,
+    due_on: parsed.value.dueOn,
+    done: parsed.value.done,
     overdue: false,
     sort_order: sortOrder,
   });
@@ -233,15 +238,30 @@ export async function updateTodo(input: unknown): Promise<WriteResult> {
   const supabase = getSupabase();
   if (!supabase) return { persisted: false };
 
-  const patch: { title?: string; done?: boolean; updated_at: string } = {
+  const patch: { title?: string; done?: boolean; due_on?: string | null; updated_at: string } = {
     updated_at: new Date().toISOString(),
   };
   if (parsed.value.title !== undefined) patch.title = parsed.value.title;
   if (parsed.value.done !== undefined) patch.done = parsed.value.done;
+  if ("dueOn" in parsed.value) patch.due_on = parsed.value.dueOn ?? null;
 
   const { data, error } = await supabase.from("todos").update(patch).eq("id", parsed.value.id).select("id");
   if (error || !data?.length) {
     if (error) logFailure("todo update", error);
+    return { persisted: false };
+  }
+  return { persisted: true };
+}
+
+export async function deleteTodo(input: unknown): Promise<WriteResult> {
+  const parsed = parseTodoDelete(input);
+  if (!parsed.ok) return { persisted: false };
+  const supabase = getSupabase();
+  if (!supabase) return { persisted: false };
+
+  const { data, error } = await supabase.from("todos").delete().eq("id", parsed.value.id).select("id");
+  if (error || !data?.length) {
+    if (error) logFailure("todo delete", error);
     return { persisted: false };
   }
   return { persisted: true };

@@ -10,6 +10,7 @@ import {
   parseDinnerDays,
   parseShoppingCreate,
   parseTodoCreate,
+  parseTodoDelete,
   parseTodoPatch,
   refreshMenuItems,
   type DinnerDayRow,
@@ -23,16 +24,15 @@ const lanes: LaneTemplate[] = [
   { personId: "ulla", detail: "Mamma" },
 ];
 
-test("groups todos onto the fixture lanes and keeps due text", () => {
+test("derives the frist from due_on and ignores a stored label", () => {
   const rows: TodoRow[] = [
     {
       id: "b",
       person_id: "knut",
       title: "Second",
       description: "",
-      due_label: "i morgen",
+      due_on: "2026-10-04",
       done: false,
-      overdue: false,
       sort_order: 2,
     },
     {
@@ -40,9 +40,8 @@ test("groups todos onto the fixture lanes and keeps due text", () => {
       person_id: "knut",
       title: "First",
       description: "later",
-      due_label: null,
+      due_on: null,
       done: true,
-      overdue: false,
       sort_order: 1,
     },
     {
@@ -50,35 +49,48 @@ test("groups todos onto the fixture lanes and keeps due text", () => {
       person_id: "ulla",
       title: "Late",
       description: "",
-      due_label: "i går",
+      due_on: "2026-10-02",
       done: false,
-      overdue: true,
       sort_order: 0,
+    },
+    {
+      id: "ahead",
+      person_id: "ulla",
+      title: "Ahead",
+      description: "",
+      due_on: "2026-10-31T00:00:00",
+      done: false,
+      sort_order: 1,
     },
     {
       id: "stray",
       person_id: "guest",
       title: "No",
       description: "",
-      due_label: null,
+      due_on: null,
       done: false,
-      overdue: false,
       sort_order: 0,
     },
   ];
 
-  const result = lanesFromRows(rows, lanes);
+  const result = lanesFromRows(rows, lanes, "2026-10-03");
   assert.deepEqual(
     result.map((lane) => ({ person: lane.personId, titles: lane.tasks.map((task) => task.title) })),
     [
       { person: "knut", titles: ["First", "Second"] },
-      { person: "ulla", titles: ["Late"] },
+      { person: "ulla", titles: ["Late", "Ahead"] },
     ],
   );
   assert.equal(result[0]?.tasks[1]?.due, "i morgen");
+  assert.equal(result[0]?.tasks[1]?.dueOn, "2026-10-04");
+  assert.equal(result[0]?.tasks[1]?.overdue, undefined);
   assert.equal(result[0]?.tasks[0]?.done, true);
-  assert.equal(result[1]?.tasks[0]?.overdue, true);
   assert.equal(result[0]?.tasks[0]?.due, undefined);
+  assert.equal(result[0]?.tasks[0]?.sortOrder, 1);
+  assert.equal(result[1]?.tasks[0]?.due, "i går");
+  assert.equal(result[1]?.tasks[0]?.overdue, true);
+  assert.equal(result[1]?.tasks[1]?.due, "31.10");
+  assert.equal(result[1]?.tasks[1]?.overdue, undefined);
 });
 
 test("requires all seven dinner days and keeps ingredients on the meal", () => {
@@ -133,9 +145,35 @@ test("parses writes and drops anything that is not a list field", () => {
   assert.equal(parseTodoCreate({ id: "knut-ny", personId: "guest", title: "Ok" }).ok, false);
   const created = parseTodoCreate({ id: "11111111-1111-1111-1111-111111111111", personId: "maja", title: "  Rydde  " });
   assert.equal(created.ok && created.value.title, "Rydde");
+  assert.equal(created.ok && created.value.dueOn, null);
+  assert.equal(created.ok && created.value.done, false);
+  assert.equal(created.ok && created.value.sortOrder, null);
+  const restored = parseTodoCreate({
+    id: "knut-eu",
+    personId: "knut",
+    title: "Bestille",
+    dueOn: "2026-10-31",
+    done: true,
+    sortOrder: 0,
+  });
+  assert.equal(restored.ok && restored.value.dueOn, "2026-10-31");
+  assert.equal(restored.ok && restored.value.done, true);
+  assert.equal(restored.ok && restored.value.sortOrder, 0);
+  assert.equal(parseTodoCreate({ id: "knut-eu", personId: "knut", title: "Ok", dueOn: "i morgen" }).ok, false);
+  assert.equal(parseTodoCreate({ id: "knut-eu", personId: "knut", title: "Ok", sortOrder: 1.5 }).ok, false);
 
   assert.equal(parseTodoPatch({ id: "knut-eu" }).ok, false);
   assert.equal(parseTodoPatch({ id: "knut-eu", done: true }).ok, true);
+  const onlyDue = parseTodoPatch({ id: "knut-eu", dueOn: null });
+  assert.equal(onlyDue.ok && onlyDue.value.dueOn, null);
+  assert.equal(onlyDue.ok && onlyDue.value.title, undefined);
+  assert.equal(parseTodoPatch({ id: "knut-eu", dueOn: "2026-10-03" }).ok, true);
+  assert.equal(parseTodoPatch({ id: "knut-eu", dueOn: "2026-02-31" }).ok, false);
+  assert.equal(parseTodoPatch({ id: "knut-eu", dueOn: "31.10" }).ok, false);
+  assert.equal(parseTodoPatch({ id: "knut-eu", dueOn: "i morgen" }).ok, false);
+  assert.equal(parseTodoDelete({ id: "knut-eu" }).ok, true);
+  assert.equal(parseTodoDelete({ id: "../x" }).ok, false);
+  assert.equal(parseTodoDelete({}).ok, false);
 
   assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: "Melk", quantity: "1 l", week: "2026-10-05" }).ok, true);
   assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: "Melk", quantity: "" }).ok, false);

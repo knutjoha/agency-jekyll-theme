@@ -1,14 +1,20 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { Calendar, Check, Plus, TriangleAlert } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { Calendar, Check, Plus, Trash2, TriangleAlert, Undo2 } from "lucide-react";
+import { FristPicker } from "@/components/todo/FristPicker";
+import { draftKey, useTodoActions } from "@/components/todo/use-todo-actions";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { people } from "@/data/fixture";
 import type { Person, PersonId, TodoLane, TodoTask, WeatherView } from "@/data/types";
-import { writeJson } from "@/lib/persist-client";
+import { fristLabel, isOverdue } from "@/lib/frist";
 import type { OsloNow } from "@/lib/oslo";
 
 const PHONE_EDIT_ID = "knut-dekk";
+const ACTION = 84;
+const GAP = 8;
+const DELETE_BG = "#3A1C1C";
+const DELETE_FG = "#FF6B6B";
 
 function personFor(id: PersonId): Person {
   const person = people.find((entry) => entry.id === id);
@@ -35,7 +41,8 @@ export function TodoMobile({
   lanes: TodoLane[];
   persisted: boolean;
 }) {
-  const [lanes, setLanes] = useState<TodoLane[]>(() =>
+  const [selectedId, setSelectedId] = useState<PersonId>("knut");
+  const actions = useTodoActions(
     initialLanes.map((lane) => ({
       ...lane,
       tasks: lane.tasks.map((task) => ({
@@ -43,111 +50,13 @@ export function TodoMobile({
         editing: persisted ? false : task.id === PHONE_EDIT_ID,
       })),
     })),
+    persisted,
   );
-  const [selectedId, setSelectedId] = useState<PersonId>("knut");
-  const [drafts, setDrafts] = useState<Partial<Record<PersonId, string>>>({});
-  const originals = useRef(new Map(initialLanes.flatMap((lane) => lane.tasks.map((task) => [task.id, task.title]))));
-
+  const { lanes, drafts, pickerId, revealedId, removed, today } = actions;
   const selected = lanes.find((lane) => lane.personId === selectedId) ?? lanes[0];
   const person = personFor(selected.personId);
   const draft = drafts[selected.personId];
   const drafting = draft !== undefined;
-
-  function updateTask(id: string, patch: Partial<TodoTask>) {
-    setLanes((current) =>
-      current.map((lane) => ({
-        ...lane,
-        tasks: lane.tasks.map((task) => (task.id === id ? { ...task, ...patch } : task)),
-      })),
-    );
-  }
-
-  function toggleTask(id: string) {
-    const task = lanes.flatMap((lane) => lane.tasks).find((entry) => entry.id === id);
-    if (!task) return;
-    const done = !task.done;
-    setLanes((current) =>
-      current.map((lane) => ({
-        ...lane,
-        tasks: lane.tasks.map((entry) => (entry.id === id ? { ...entry, done, editing: false } : entry)),
-      })),
-    );
-    if (!persisted) return;
-    void writeJson("/api/todos", "PATCH", { id, done }).then((ok) => {
-      if (ok) return;
-      setLanes((current) =>
-        current.map((lane) => ({
-          ...lane,
-          tasks: lane.tasks.map((entry) => (entry.id === id && entry.done === done ? { ...entry, done: !done } : entry)),
-        })),
-      );
-    });
-  }
-
-  function cancelEdit(id: string) {
-    updateTask(id, { editing: false, title: originals.current.get(id) ?? "" });
-  }
-
-  function saveEdit(task: TodoTask) {
-    const title = task.title.trim();
-    if (!title) {
-      cancelEdit(task.id);
-      return;
-    }
-    const previous = originals.current.get(task.id) ?? title;
-    originals.current.set(task.id, title);
-    updateTask(task.id, { editing: false, title });
-    if (!persisted) return;
-    void writeJson("/api/todos", "PATCH", { id: task.id, title }).then((ok) => {
-      if (ok) return;
-      originals.current.set(task.id, previous);
-      updateTask(task.id, { title: previous });
-    });
-  }
-
-  function beginDraft(personId: PersonId) {
-    setLanes((current) =>
-      current.map((lane) => ({
-        ...lane,
-        tasks: lane.tasks.map((task) =>
-          task.editing ? { ...task, editing: false, title: originals.current.get(task.id) ?? task.title } : task,
-        ),
-      })),
-    );
-    setDrafts({ [personId]: "" });
-  }
-
-  function cancelDraft(personId: PersonId) {
-    setDrafts((current) => {
-      const next = { ...current };
-      delete next[personId];
-      return next;
-    });
-  }
-
-  function saveDraft(personId: PersonId) {
-    const title = (drafts[personId] ?? "").trim();
-    if (!title) {
-      cancelDraft(personId);
-      return;
-    }
-    const task: TodoTask = { id: crypto.randomUUID(), title };
-    originals.current.set(task.id, title);
-    setLanes((current) =>
-      current.map((lane) => (lane.personId === personId ? { ...lane, tasks: [...lane.tasks, task] } : lane)),
-    );
-    cancelDraft(personId);
-    if (!persisted) return;
-    void writeJson("/api/todos", "POST", { id: task.id, personId, title }).then((ok) => {
-      if (ok) return;
-      setLanes((current) =>
-        current.map((lane) => ({
-          ...lane,
-          tasks: lane.tasks.filter((entry) => entry.id !== task.id),
-        })),
-      );
-    });
-  }
 
   return (
     <div
@@ -175,7 +84,10 @@ export function TodoMobile({
               data-person={lane.personId}
               aria-pressed={selectedPerson}
               aria-label={`${label} ${count}`}
-              onClick={() => setSelectedId(lane.personId)}
+              onClick={() => {
+                actions.closeReveal();
+                setSelectedId(lane.personId);
+              }}
               style={{
                 flex: 1,
                 minWidth: 0,
@@ -264,22 +176,53 @@ export function TodoMobile({
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {selected.tasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            onToggle={() => toggleTask(task.id)}
-            onTitle={(title) => updateTask(task.id, { title })}
-            onCancel={() => cancelEdit(task.id)}
-            onSave={() => saveEdit(task)}
-          />
-        ))}
+        {selected.tasks.map((task) => {
+          const card = (
+            <TaskCard
+              task={task}
+              today={today}
+              pickerOpen={pickerId === task.id}
+              onOpen={() => actions.beginEdit(task.id)}
+              onToggle={() => actions.toggleTask(task.id)}
+              onTitle={(title) => actions.setTitle(task.id, title)}
+              onDue={(dueOn) => actions.setDue(task.id, dueOn)}
+              onPicker={(open) => actions.setPickerId(open ? task.id : null)}
+              onClear={() => {
+                actions.setDue(task.id, null);
+                actions.setPickerId(null);
+              }}
+              onCancel={() => actions.cancelEdit(task.id)}
+              onSave={() => actions.saveEdit(task)}
+              onDelete={() => actions.deleteTask(task.id)}
+            />
+          );
+          if (task.editing) return <div key={task.id}>{card}</div>;
+          return (
+            <SwipeRow
+              key={task.id}
+              open={revealedId === task.id}
+              onOpenChange={(open) => (open ? actions.reveal(task.id) : actions.closeReveal())}
+              onDelete={() => actions.deleteTask(task.id)}
+            >
+              {card}
+            </SwipeRow>
+          );
+        })}
         {drafting ? (
           <DraftCard
-            title={draft}
-            onTitle={(title) => setDrafts((current) => ({ ...current, [selected.personId]: title }))}
-            onCancel={() => cancelDraft(selected.personId)}
-            onSave={() => saveDraft(selected.personId)}
+            title={draft.title}
+            dueOn={draft.dueOn}
+            today={today}
+            pickerOpen={pickerId === draftKey(selected.personId)}
+            onTitle={(title) => actions.setDraftTitle(selected.personId, title)}
+            onDue={(dueOn) => actions.setDraftDue(selected.personId, dueOn)}
+            onPicker={(open) => actions.setPickerId(open ? draftKey(selected.personId) : null)}
+            onClear={() => {
+              actions.setDraftDue(selected.personId, null);
+              actions.setPickerId(null);
+            }}
+            onCancel={() => actions.cancelDraft(selected.personId)}
+            onSave={() => actions.saveDraft(selected.personId)}
           />
         ) : null}
       </div>
@@ -287,7 +230,7 @@ export function TodoMobile({
       {drafting ? null : (
         <button
           type="button"
-          onClick={() => beginDraft(selected.personId)}
+          onClick={() => actions.openDraft(selected.personId)}
           style={{
             width: "100%",
             height: 48,
@@ -314,31 +257,265 @@ export function TodoMobile({
           Ny oppgave til {shortName(person.name)}
         </button>
       )}
+
+      {removed ? (
+        <div
+          role="status"
+          data-toast="phone"
+          style={{
+            position: "fixed",
+            left: 16,
+            right: 16,
+            bottom: "calc(72px + env(safe-area-inset-bottom))",
+            zIndex: 30,
+            height: 56,
+            boxSizing: "border-box",
+            display: "flex",
+            alignItems: "center",
+            gap: 11,
+            padding: "0 14px",
+            background: "var(--tile-2)",
+            borderRadius: 12,
+            boxShadow: "0 8px 24px #000000A6",
+          }}
+        >
+          <Trash2 size={16} color="var(--text-muted)" />
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              fontFamily: "var(--font-body)",
+              fontSize: 14,
+              fontWeight: 400,
+              color: "var(--text)",
+            }}
+          >
+            «{removed.task.title}» slettet
+          </span>
+          <button type="button" onClick={actions.undo} style={undoPill}>
+            <Undo2 size={14} color="var(--accent)" />
+            Angre
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
 
+function SwipeRow({
+  open,
+  onOpenChange,
+  onDelete,
+  children,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete: () => void;
+  children: ReactNode;
+}) {
+  const [width, setWidth] = useState(open ? ACTION : 0);
+  const [dragging, setDragging] = useState(false);
+  const widthRef = useRef(width);
+  const drag = useRef<{ id: number; x: number; y: number; origin: number; axis: "x" | "y" | null } | null>(null);
+  const suppress = useRef(false);
+
+  function setReveal(next: number) {
+    widthRef.current = next;
+    setWidth(next);
+  }
+
+  useEffect(() => {
+    if (!dragging) setReveal(open ? ACTION : 0);
+  }, [open, dragging]);
+
+  function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("button, input, textarea, a")) return;
+    drag.current = { id: event.pointerId, x: event.clientX, y: event.clientY, origin: widthRef.current, axis: null };
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const state = drag.current;
+    if (!state || state.id !== event.pointerId) return;
+    const dx = event.clientX - state.x;
+    const dy = event.clientY - state.y;
+    if (!state.axis) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      state.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+      if (state.axis === "y") return;
+      setDragging(true);
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    if (state.axis !== "x") return;
+    setReveal(Math.min(ACTION, Math.max(0, state.origin - dx)));
+  }
+
+  function finish(event: { pointerId: number }) {
+    const state = drag.current;
+    if (!state || state.id !== event.pointerId) return;
+    drag.current = null;
+    if (state.axis !== "x") return;
+    suppress.current = true;
+    window.setTimeout(() => {
+      suppress.current = false;
+    }, 350);
+    const snap = widthRef.current > ACTION / 2;
+    setDragging(false);
+    setReveal(snap ? ACTION : 0);
+    onOpenChange(snap);
+  }
+
+  const finishRef = useRef(finish);
+  finishRef.current = finish;
+
+  useEffect(() => {
+    function end(event: PointerEvent) {
+      finishRef.current(event);
+    }
+    window.addEventListener("pointerup", end);
+    window.addEventListener("pointercancel", end);
+    return () => {
+      window.removeEventListener("pointerup", end);
+      window.removeEventListener("pointercancel", end);
+    };
+  }, []);
+
+  return (
+    <div
+      data-revealed={open ? "true" : undefined}
+      style={{ display: "flex", alignItems: "stretch", touchAction: "pan-y" }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={finish}
+      onPointerCancel={finish}
+      onClickCapture={(event) => {
+        if (!suppress.current) return;
+        suppress.current = false;
+        const target = event.target as HTMLElement;
+        if (target.closest("[data-swipe-delete]")) return;
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+    >
+      <div style={{ flex: "1 1 auto", minWidth: 0 }}>{children}</div>
+      <div
+        style={{
+          width,
+          marginLeft: width > 0 ? GAP : 0,
+          overflow: "hidden",
+          flexShrink: 0,
+          transition: dragging ? "none" : "width 160ms ease, margin-left 160ms ease",
+        }}
+      >
+        <button
+          type="button"
+          aria-label="Slett"
+          data-swipe-delete="true"
+          onClick={(event) => {
+            event.stopPropagation();
+            onDelete();
+          }}
+          style={{
+            width: ACTION,
+            height: "100%",
+            border: "none",
+            borderRadius: 12,
+            background: DELETE_BG,
+            color: DELETE_FG,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 5,
+            padding: 0,
+            cursor: "pointer",
+          }}
+        >
+          <Trash2 size={19} color={DELETE_FG} />
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 12, lineHeight: 1, color: DELETE_FG }}>Slett</span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function scrollParent(node: HTMLElement): HTMLElement {
+  let parent = node.parentElement;
+  while (parent) {
+    const overflow = getComputedStyle(parent).overflowY;
+    if (/(auto|scroll)/.test(overflow)) return parent;
+    parent = parent.parentElement;
+  }
+  return document.documentElement;
+}
+
+function usePopoverRoom(open: boolean) {
+  const [reserved, setReserved] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) setReserved(0);
+  }, [open]);
+  useLayoutEffect(() => {
+    if (!open || reserved <= 0) return;
+    const node = ref.current?.querySelector<HTMLElement>("[data-frist-popover]");
+    if (!node) return;
+    const parent = scrollParent(node);
+    const rect = node.getBoundingClientRect();
+    const limit = parent === document.documentElement ? window.innerHeight - 88 : parent.getBoundingClientRect().bottom;
+    const overflow = rect.bottom - (limit - 16);
+    if (overflow > 0) parent.scrollTop += overflow;
+  }, [open, reserved]);
+  return { reserved, setReserved, ref };
+}
+
 function TaskCard({
   task,
+  today,
+  pickerOpen,
+  onOpen,
   onToggle,
   onTitle,
+  onDue,
+  onPicker,
+  onClear,
   onCancel,
   onSave,
+  onDelete,
 }: {
   task: TodoTask;
+  today: string;
+  pickerOpen: boolean;
+  onOpen: () => void;
   onToggle: () => void;
   onTitle: (title: string) => void;
+  onDue: (dueOn: string) => void;
+  onPicker: (open: boolean) => void;
+  onClear: () => void;
   onCancel: () => void;
   onSave: () => void;
+  onDelete: () => void;
 }) {
   const editing = Boolean(task.editing);
-  const showDue = Boolean(task.due) && !task.done && !editing;
+  const dueLabel = task.dueOn ? fristLabel(task.dueOn, today) : (task.due ?? null);
+  const dueOverdue = task.dueOn ? isOverdue(task.dueOn, today) : Boolean(task.overdue);
+  const showDue = Boolean(dueLabel) && !task.done && !editing;
+  const room = usePopoverRoom(pickerOpen);
   return (
+    <div ref={room.ref}>
     <article
       data-task={task.id}
       data-editing={editing ? "true" : undefined}
       data-done={task.done ? "true" : undefined}
+      onClick={() => {
+        if (!editing) onOpen();
+      }}
       style={{
+        position: "relative",
+        zIndex: pickerOpen ? 40 : undefined,
         width: "100%",
         boxSizing: "border-box",
         display: "flex",
@@ -349,12 +526,13 @@ function TaskCard({
         borderRadius: "var(--r-nested)",
         outline: editing ? "1.5px solid var(--accent)" : "none",
         outlineOffset: editing ? -0.75 : undefined,
+        cursor: editing ? "auto" : "pointer",
       }}
     >
-      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 11, width: "100%" }}>
+      <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 11, width: "100%" }}>
         <CheckBox done={Boolean(task.done)} label={task.title} onToggle={onToggle} />
         {editing ? (
-          <TitleField value={task.title} onChange={onTitle} onSave={onSave} label={task.title || "Oppgavetittel"} />
+          <TitleField value={task.title} onChange={onTitle} onSave={onSave} label={task.title || "Oppgavetittel"} autoFocus />
         ) : (
           <div
             style={{
@@ -371,27 +549,58 @@ function TaskCard({
           </div>
         )}
       </div>
-      {showDue ? <DueRow due={task.due ?? ""} overdue={Boolean(task.overdue)} /> : null}
-      {editing ? <EditorActions onCancel={onCancel} onSave={onSave} /> : null}
+      {showDue ? <DueRow due={dueLabel ?? ""} overdue={dueOverdue} /> : null}
+      {editing ? (
+        <EditorActions
+          dueOn={task.dueOn ?? null}
+          today={today}
+          pickerOpen={pickerOpen}
+          onDue={onDue}
+          onPicker={onPicker}
+          onClear={onClear}
+          onCancel={onCancel}
+          onSave={onSave}
+          onDelete={onDelete}
+          onReserve={room.setReserved}
+        />
+      ) : null}
     </article>
+    {room.reserved > 0 ? <div aria-hidden style={{ height: room.reserved }} /> : null}
+    </div>
   );
 }
 
 function DraftCard({
   title,
+  dueOn,
+  today,
+  pickerOpen,
   onTitle,
+  onDue,
+  onPicker,
+  onClear,
   onCancel,
   onSave,
 }: {
   title: string;
+  dueOn: string | null;
+  today: string;
+  pickerOpen: boolean;
   onTitle: (title: string) => void;
+  onDue: (dueOn: string) => void;
+  onPicker: (open: boolean) => void;
+  onClear: () => void;
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const room = usePopoverRoom(pickerOpen);
   return (
+    <div ref={room.ref}>
     <article
       data-draft="true"
       style={{
+        position: "relative",
+        zIndex: pickerOpen ? 40 : undefined,
         width: "100%",
         boxSizing: "border-box",
         display: "flex",
@@ -418,8 +627,20 @@ function DraftCard({
         />
         <TitleField value={title} onChange={onTitle} onSave={onSave} label="Ny oppgave" autoFocus />
       </div>
-      <EditorActions onCancel={onCancel} onSave={onSave} />
+      <EditorActions
+        dueOn={dueOn}
+        today={today}
+        pickerOpen={pickerOpen}
+        onDue={onDue}
+        onPicker={onPicker}
+        onClear={onClear}
+        onCancel={onCancel}
+        onSave={onSave}
+        onReserve={room.setReserved}
+      />
     </article>
+    {room.reserved > 0 ? <div aria-hidden style={{ height: room.reserved }} /> : null}
+    </div>
   );
 }
 
@@ -429,7 +650,11 @@ function CheckBox({ done, label, onToggle }: { done: boolean; label: string; onT
       type="button"
       aria-pressed={done}
       aria-label={done ? `Merk ${label} som åpen` : `Fullfør ${label}`}
-      onClick={onToggle}
+      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle();
+      }}
       style={{
         width: 26,
         height: 26,
@@ -464,26 +689,36 @@ function TitleField({
   label: string;
   autoFocus?: boolean;
 }) {
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const node = fieldRef.current;
+    if (!node || !autoFocus || node.getClientRects().length === 0) return;
+    node.focus();
+  }, [autoFocus]);
   return (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "row", alignItems: "center", gap: 3 }}>
-      <span style={{ position: "relative", display: "inline-flex", maxWidth: "100%", minWidth: 2 }}>
+    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "row", alignItems: "flex-end", gap: 3 }}>
+      <span style={{ position: "relative", flex: 1, minWidth: 0 }}>
         <span
           aria-hidden
           style={{
-            whiteSpace: "pre",
+            visibility: "hidden",
+            whiteSpace: "pre-wrap",
+            overflowWrap: "anywhere",
+            display: "block",
             fontFamily: "var(--font-body)",
             fontSize: 15,
             lineHeight: 1.2,
             fontWeight: 400,
-            color: "var(--text)",
           }}
         >
           {value || " "}
         </span>
-        <input
+        <textarea
+          ref={fieldRef}
           aria-label={label}
           value={value}
-          autoFocus={autoFocus}
+          rows={1}
+          onClick={(event) => event.stopPropagation()}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -495,13 +730,16 @@ function TitleField({
             position: "absolute",
             inset: 0,
             width: "100%",
+            height: "100%",
             margin: 0,
             padding: 0,
             border: "none",
+            resize: "none",
+            overflow: "hidden",
             outline: "none",
             background: "transparent",
             caretColor: "transparent",
-            color: "transparent",
+            color: "var(--text)",
             fontFamily: "var(--font-body)",
             fontSize: 15,
             lineHeight: 1.2,
@@ -514,16 +752,99 @@ function TitleField({
   );
 }
 
-function EditorActions({ onCancel, onSave }: { onCancel: () => void; onSave: () => void }) {
+function EditorActions({
+  dueOn,
+  today,
+  pickerOpen,
+  onDue,
+  onPicker,
+  onClear,
+  onCancel,
+  onSave,
+  onDelete,
+  onReserve,
+}: {
+  dueOn: string | null;
+  today: string;
+  pickerOpen: boolean;
+  onDue: (dueOn: string) => void;
+  onPicker: (open: boolean) => void;
+  onClear: () => void;
+  onCancel: () => void;
+  onSave: () => void;
+  onDelete?: () => void;
+  onReserve?: (height: number) => void;
+}) {
   return (
-    <div style={{ display: "flex", flexDirection: "row", justifyContent: "flex-end", gap: 8, width: "100%" }}>
-      <button type="button" onClick={onCancel} style={ghostPill}>
-        Avbryt
-      </button>
-      <button type="button" onClick={onSave} style={savePill}>
-        Lagre
-      </button>
+    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <FristPicker
+          phone
+          dueOn={dueOn}
+          today={today}
+          open={pickerOpen}
+          onOpenChange={onPicker}
+          onChange={onDue}
+          onClear={onClear}
+          onReserve={onReserve}
+        />
+        {onDelete ? <PhoneDelete onClick={onDelete} /> : null}
+      </div>
+      <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onCancel();
+          }}
+          style={ghostPill}
+        >
+          Avbryt
+        </button>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSave();
+          }}
+          style={savePill}
+        >
+          Lagre
+        </button>
+      </div>
     </div>
+  );
+}
+
+function PhoneDelete({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 7,
+        flexShrink: 0,
+        padding: "9px 14px",
+        border: "none",
+        borderRadius: "var(--r-full)",
+        background: DELETE_BG,
+        color: DELETE_FG,
+        cursor: "pointer",
+        fontFamily: "var(--font-body)",
+        fontSize: 13,
+        lineHeight: "normal",
+        fontWeight: 400,
+      }}
+    >
+      <Trash2 size={14} color={DELETE_FG} />
+      Slett
+    </button>
   );
 }
 
@@ -582,4 +903,21 @@ const savePill = {
   ...pillBase,
   background: "var(--accent)",
   color: "var(--ink)",
+};
+
+const undoPill = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  flexShrink: 0,
+  padding: "8px 13px",
+  border: "none",
+  borderRadius: "var(--r-full)",
+  background: "var(--tile-3)",
+  color: "var(--accent)",
+  cursor: "pointer",
+  fontFamily: "var(--font-body)",
+  fontSize: 13,
+  lineHeight: "normal",
+  fontWeight: 400,
 };

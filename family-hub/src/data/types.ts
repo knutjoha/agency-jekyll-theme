@@ -77,9 +77,11 @@ export type TodoTask = {
   id: string;
   title: string;
   due?: string;
+  dueOn?: string;
   done?: boolean;
   overdue?: boolean;
   editing?: boolean;
+  sortOrder?: number;
 };
 
 export type TodoLane = {
