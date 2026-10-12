@@ -1,20 +1,27 @@
 import "server-only";
 import { dinnerMenu } from "@/data/middag";
 import { todoLanes } from "@/data/todo";
-import type { DinnerMenu, GroceryAisle, TodoLane } from "@/data/types";
+import type { DinnerMenu, GroceryAisle, MenuDay, TodoLane } from "@/data/types";
+import { mondayOf, parseIsoDate } from "@/lib/calendar-view";
+import { osloDateKey } from "@/lib/oslo";
 import { getSupabase } from "@/lib/supabase/admin";
 import {
   aislesFromRows,
   daysFromRows,
+  dinnerPeriod,
+  emptyDinnerDays,
   lanesFromRows,
+  parseDinnerDaySave,
   parseDinnerDays,
   parseShoppingCreate,
   parseShoppingPatch,
+  parseStartsOn,
   parseTodoCreate,
   parseTodoPatch,
   type AisleRow,
   type DinnerDayRow,
   type DinnerWeekRow,
+  type IngredientRow,
   type ItemRow,
   type TodoRow,
 } from "./map";
@@ -30,6 +37,7 @@ export type TodoLoad = {
 export type DinnerLoad = {
   source: ListSource;
   persisted: boolean;
+  week: string;
   startsOn: DinnerMenu["startsOn"];
   period: string;
   days: DinnerMenu["days"];
@@ -38,7 +46,14 @@ export type DinnerLoad = {
 export type ShoppingLoad = {
   source: ListSource;
   persisted: boolean;
+  week: string;
   aisles: GroceryAisle[];
+};
+
+export type DinnerDayResult = WriteResult & {
+  week?: string;
+  days?: MenuDay[];
+  aisles?: GroceryAisle[];
 };
 
 export type WriteResult = {
@@ -63,6 +78,7 @@ function fixtureDinner(): DinnerLoad {
   return {
     source: "fixture",
     persisted: false,
+    week: "2026-09-28",
     startsOn: dinnerMenu.startsOn,
     period: dinnerMenu.period,
     days: dinnerMenu.days,
@@ -70,7 +86,25 @@ function fixtureDinner(): DinnerLoad {
 }
 
 function fixtureShopping(): ShoppingLoad {
-  return { source: "fixture", persisted: false, aisles: dinnerMenu.aisles };
+  return { source: "fixture", persisted: false, week: "2026-09-28", aisles: dinnerMenu.aisles };
+}
+
+export function mondayFor(week: string | null | undefined, now = new Date()): string {
+  const requested = week ? parseIsoDate(week) : null;
+  return requested ? mondayOf(requested) : mondayOf(osloDateKey(now));
+}
+
+function dinnerShell(monday: string, period = dinnerPeriod(monday)): DinnerLoad {
+  const startsOn = parseStartsOn(monday);
+  if (!startsOn) return fixtureDinner();
+  return {
+    source: "supabase",
+    persisted: true,
+    week: monday,
+    startsOn,
+    period,
+    days: emptyDinnerDays(monday),
+  };
 }
 
 export async function loadTodos(options?: { snapshot?: boolean }): Promise<TodoLoad> {
@@ -95,35 +129,54 @@ export async function loadTodos(options?: { snapshot?: boolean }): Promise<TodoL
   };
 }
 
-export async function loadDinner(options?: { snapshot?: boolean }): Promise<DinnerLoad> {
+export async function loadDinner(options?: { snapshot?: boolean; week?: string | null }): Promise<DinnerLoad> {
   if (options?.snapshot) return fixtureDinner();
   const supabase = getSupabase();
   if (!supabase) return fixtureDinner();
+  const monday = mondayFor(options?.week);
 
-  const [weekResult, dayResult] = await Promise.all([
-    supabase.from("dinner_week").select("id, starts_on, period").eq("id", "current").maybeSingle(),
-    supabase.from("dinner_days").select("id, weekday, date_label, sort_order, meal_id, meal_title, meal_minutes, meal_diets"),
+  const [weekResult, dayResult, ingredientResult] = await Promise.all([
+    supabase.from("dinner_week").select("id, starts_on, period").eq("id", monday).maybeSingle(),
+    supabase
+      .from("dinner_days")
+      .select("id, weekday, date_label, sort_order, meal_id, meal_title, meal_minutes")
+      .eq("week_id", monday),
+    supabase
+      .from("dinner_ingredients")
+      .select("meal_id, id, name, amount, sort_order")
+      .eq("week_id", monday),
   ]);
 
-  if (weekResult.error || dayResult.error || !dayResult.data) {
+  if (weekResult.error || dayResult.error || ingredientResult.error || !dayResult.data || !ingredientResult.data) {
     if (weekResult.error) logFailure("dinner week read", weekResult.error);
     if (dayResult.error) logFailure("dinner days read", dayResult.error);
+    if (ingredientResult.error) logFailure("dinner ingredients read", ingredientResult.error);
     return fixtureDinner();
   }
 
-  const menu = daysFromRows((weekResult.data as DinnerWeekRow | null) ?? null, dayResult.data as DinnerDayRow[]);
-  if (!menu) return fixtureDinner();
-  return { source: "supabase", persisted: true, ...menu };
+  const week = (weekResult.data as DinnerWeekRow | null) ?? null;
+  if (!week) return dinnerShell(monday);
+  const menu = daysFromRows(week, dayResult.data as DinnerDayRow[], ingredientResult.data as IngredientRow[]);
+  if (!menu) {
+    if (dayResult.data.length === 0) return dinnerShell(monday, week.period);
+    return fixtureDinner();
+  }
+  return { source: "supabase", persisted: true, week: monday, ...menu };
 }
 
-export async function loadShopping(options?: { snapshot?: boolean }): Promise<ShoppingLoad> {
+export async function loadShopping(options?: { snapshot?: boolean; week?: string | null }): Promise<ShoppingLoad> {
   if (options?.snapshot) return fixtureShopping();
   const supabase = getSupabase();
   if (!supabase) return fixtureShopping();
+  const monday = mondayFor(options?.week);
 
   const [aisleResult, itemResult] = await Promise.all([
     supabase.from("shopping_aisles").select("id, label, sort_order").order("sort_order", { ascending: true }),
-    supabase.from("shopping_items").select("id, aisle_id, name, quantity, done, sort_order").order("sort_order", { ascending: true }),
+    supabase
+      .from("shopping_items")
+      .select("id, aisle_id, name, quantity, done, sort_order")
+      .eq("week_id", monday)
+      .order("sort_order", { ascending: true }),
   ]);
 
   if (aisleResult.error || itemResult.error || !aisleResult.data || !itemResult.data) {
@@ -134,7 +187,7 @@ export async function loadShopping(options?: { snapshot?: boolean }): Promise<Sh
 
   const aisles = aislesFromRows(aisleResult.data as AisleRow[], itemResult.data as ItemRow[]);
   if (!aisles) return fixtureShopping();
-  return { source: "supabase", persisted: true, aisles };
+  return { source: "supabase", persisted: true, week: monday, aisles };
 }
 
 export async function createTodo(input: unknown): Promise<WriteResult> {
@@ -200,7 +253,10 @@ export async function saveDinner(input: unknown): Promise<WriteResult> {
   const supabase = getSupabase();
   if (!supabase) return { persisted: false };
 
-  const { error } = await supabase.rpc("save_dinner_days", { days: parsed.value });
+  const { error } = await supabase.rpc("save_dinner_days", {
+    week: mondayOf(parsed.value.week),
+    days: parsed.value.days,
+  });
   if (error) {
     logFailure("dinner save", error);
     return { persisted: false };
@@ -208,11 +264,49 @@ export async function saveDinner(input: unknown): Promise<WriteResult> {
   return { persisted: true };
 }
 
+export async function saveDinnerDay(input: unknown): Promise<DinnerDayResult> {
+  const parsed = parseDinnerDaySave(input);
+  if (!parsed.ok) return { persisted: false };
+  const supabase = getSupabase();
+  if (!supabase) return { persisted: false };
+  const week = mondayOf(parsed.value.week);
+
+  const { error } = await supabase.rpc("save_dinner_day", {
+    week,
+    day_id: parsed.value.dayId,
+    meal: parsed.value.meal,
+    ingredients: parsed.value.ingredients,
+  });
+  if (error) {
+    logFailure("dinner day save", error);
+    return { persisted: false };
+  }
+
+  const [dinner, shopping] = await Promise.all([loadDinner({ week }), loadShopping({ week })]);
+  if (!dinner.persisted || !shopping.persisted) return { persisted: true, week };
+  return {
+    persisted: true,
+    week: dinner.week,
+    days: dinner.days,
+    aisles: shopping.aisles,
+  };
+}
+
 export async function createShoppingItem(input: unknown): Promise<WriteResult> {
   const parsed = parseShoppingCreate(input);
   if (!parsed.ok) return { persisted: false };
   const supabase = getSupabase();
   if (!supabase) return { persisted: false };
+
+  const week = mondayOf(parsed.value.week);
+  const { error: weekError } = await supabase.from("dinner_week").upsert(
+    { id: week, starts_on: week, period: dinnerPeriod(week) },
+    { onConflict: "id", ignoreDuplicates: true },
+  );
+  if (weekError) {
+    logFailure("shopping week", weekError);
+    return { persisted: false };
+  }
 
   const { data: aisle, error: aisleError } = await supabase
     .from("shopping_aisles")
@@ -227,6 +321,7 @@ export async function createShoppingItem(input: unknown): Promise<WriteResult> {
   const { data: latest, error: latestError } = await supabase
     .from("shopping_items")
     .select("sort_order")
+    .eq("week_id", week)
     .eq("aisle_id", parsed.value.aisleId)
     .order("sort_order", { ascending: false })
     .limit(1);
@@ -243,6 +338,8 @@ export async function createShoppingItem(input: unknown): Promise<WriteResult> {
     quantity: parsed.value.quantity,
     done: false,
     sort_order: sortOrder,
+    week_id: week,
+    origin: "manual",
   });
   if (error) {
     logFailure("shopping insert", error);

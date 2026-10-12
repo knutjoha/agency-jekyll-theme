@@ -29,7 +29,6 @@ export type Person = {
 
 export type Dinner = {
   dish: string;
-  diets: string[];
   shoppingCount: number;
 };
 
@@ -86,12 +85,17 @@ export type TodoLane = {
   tasks: TodoTask[];
 };
 
+export type Ingredient = {
+  id: string;
+  name: string;
+  amount: string;
+};
+
 export type Meal = {
   id: string;
   title: string;
-  diets: string[];
   minutes: number;
-  editing?: boolean;
+  ingredients: Ingredient[];
 };
 
 export type MenuDay = {

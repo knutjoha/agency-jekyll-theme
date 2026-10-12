@@ -1,22 +1,39 @@
-import type { MenuDay } from "@/data/types";
+import type { GroceryAisle, MenuDay } from "@/data/types";
 
-export async function writeJson(path: string, method: "POST" | "PATCH", body: unknown): Promise<boolean> {
+export type SavedDinner = {
+  persisted: boolean;
+  week?: string;
+  days?: MenuDay[];
+  aisles?: GroceryAisle[];
+};
+
+export async function writeJson(path: string, method: "POST" | "PATCH" | "PUT", body: unknown): Promise<boolean> {
+  const saved = await writeJsonResult(path, method, body);
+  return saved?.persisted === true;
+}
+
+export async function writeJsonResult(
+  path: string,
+  method: "POST" | "PATCH" | "PUT",
+  body: unknown,
+): Promise<SavedDinner | null> {
   try {
     const response = await fetch(path, {
       method,
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!response.ok) return false;
-    const payload = (await response.json()) as { persisted?: boolean };
-    return payload.persisted !== false;
+    const payload = (await response.json()) as SavedDinner;
+    if (!response.ok || payload.persisted === false) return { persisted: false };
+    return payload;
   } catch {
-    return false;
+    return null;
   }
 }
 
-export function dinnerBody(days: MenuDay[]) {
+export function dinnerBody(week: string, days: MenuDay[]) {
   return {
+    week,
     days: days.map((day) => ({
       id: day.id,
       meal: day.meal
@@ -24,7 +41,6 @@ export function dinnerBody(days: MenuDay[]) {
             id: day.meal.id,
             title: day.meal.title,
             minutes: day.meal.minutes,
-            diets: day.meal.diets,
           }
         : null,
     })),

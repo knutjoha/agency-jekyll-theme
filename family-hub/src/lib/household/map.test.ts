@@ -3,13 +3,18 @@ import { test } from "node:test";
 import {
   aislesFromRows,
   daysFromRows,
+  dinnerPeriod,
+  emptyDinnerDays,
   lanesFromRows,
+  parseDinnerDaySave,
   parseDinnerDays,
   parseShoppingCreate,
   parseTodoCreate,
   parseTodoPatch,
+  refreshMenuItems,
   type DinnerDayRow,
   type LaneTemplate,
+  type ShoppingLine,
   type TodoRow,
 } from "./map.ts";
 
@@ -76,8 +81,8 @@ test("groups todos onto the fixture lanes and keeps due text", () => {
   assert.equal(result[0]?.tasks[0]?.due, undefined);
 });
 
-test("requires all seven dinner days", () => {
-  const week = { id: "current", starts_on: "2026-09-28", period: "28.09 – 04.10" };
+test("requires all seven dinner days and keeps ingredients on the meal", () => {
+  const week = { id: "2026-09-28", starts_on: "2026-09-28", period: "28.09 – 04.10" };
   const base: DinnerDayRow = {
     id: "man",
     weekday: "mandag",
@@ -86,7 +91,6 @@ test("requires all seven dinner days", () => {
     meal_id: "wok",
     meal_title: "Kyllingwok med nudler",
     meal_minutes: 30,
-    meal_diets: ["Glutenfri"],
   };
   assert.equal(daysFromRows(week, [base]), null);
 
@@ -94,15 +98,17 @@ test("requires all seven dinner days", () => {
     ...base,
     id,
     sort_order: index,
-    meal_id: id === "fre" ? null : base.meal_id,
+    meal_id: id === "fre" ? null : `${base.meal_id}-${id}`,
     meal_title: id === "fre" ? null : base.meal_title,
     meal_minutes: id === "fre" ? null : base.meal_minutes,
-    meal_diets: id === "fre" ? [] : ["Laktosefri", "Glutenfri"],
   }));
-  const menu = daysFromRows(week, days);
+  const menu = daysFromRows(week, days, [
+    { meal_id: "wok-man", id: "kylling", name: "Kylling", amount: "600 g", sort_order: 0 },
+  ]);
   assert.equal(menu?.startsOn.month, 9);
   assert.equal(menu?.days[4]?.meal, null);
-  assert.deepEqual(menu?.days[0]?.meal?.diets, ["Laktosefri", "Glutenfri"]);
+  assert.equal(menu?.days[0]?.meal && "diets" in menu.days[0].meal, false);
+  assert.deepEqual(menu?.days[0]?.meal?.ingredients, [{ id: "kylling", name: "Kylling", amount: "600 g" }]);
 });
 
 test("rejects a shopping list with no aisles", () => {
@@ -131,16 +137,112 @@ test("parses writes and drops anything that is not a list field", () => {
   assert.equal(parseTodoPatch({ id: "knut-eu" }).ok, false);
   assert.equal(parseTodoPatch({ id: "knut-eu", done: true }).ok, true);
 
-  assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: "Melk", quantity: "1 l" }).ok, true);
+  assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: "Melk", quantity: "1 l", week: "2026-10-05" }).ok, true);
   assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: "Melk", quantity: "" }).ok, false);
+  assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: "Melk", quantity: "1 l" }).ok, false);
 
   const days = ["man", "tir", "ons", "tor", "fre", "lor", "son"].map((id) =>
     id === "fre"
       ? { id, meal: null }
-      : { id, meal: { id: "wok", title: "Wok", minutes: 30, diets: ["Glutenfri"], editing: true } },
+      : { id, meal: { id: `wok-${id}`, title: "Wok", minutes: 30, diets: ["Glutenfri"], editing: true } },
   );
-  const parsed = parseDinnerDays({ days });
+  const parsed = parseDinnerDays({ week: "2026-10-05", days });
   assert.equal(parsed.ok, true);
-  if (parsed.ok) assert.equal(parsed.value[1]?.meal?.title, "Wok");
-  assert.equal(parseDinnerDays({ days: days.slice(0, 6) }).ok, false);
+  if (parsed.ok) {
+    assert.equal(parsed.value.days[1]?.meal?.title, "Wok");
+    assert.equal(parsed.value.days[1]?.meal && "diets" in parsed.value.days[1].meal, false);
+  }
+  assert.equal(parseDinnerDays({ week: "2026-10-05", days: days.slice(0, 6) }).ok, false);
+  const withoutDiets = days.map((day) =>
+    day.meal ? { id: day.id, meal: { id: day.meal.id, title: day.meal.title, minutes: day.meal.minutes } } : day,
+  );
+  assert.equal(parseDinnerDays({ week: "2026-10-05", days: withoutDiets }).ok, true);
+});
+
+test("a repeated meal id in one week fails", () => {
+  const days = ["man", "tir", "ons", "tor", "fre", "lor", "son"].map((id) => ({
+    id,
+    meal: id === "fre" ? null : { id: id === "tir" ? "wok-man" : `wok-${id}`, title: "Wok", minutes: 30 },
+  }));
+  assert.equal(parseDinnerDays({ week: "2026-10-05", days }).ok, false);
+});
+
+test("ingredient name and amount limits match the shopping limits", () => {
+  const name200 = "a".repeat(200);
+  const name201 = "a".repeat(201);
+  const amount40 = "b".repeat(40);
+  const amount41 = "b".repeat(41);
+  const body = (name: string, amount: string) => ({
+    week: "2026-10-12",
+    dayId: "fre",
+    meal: { id: "taco", title: "Taco", minutes: 30 },
+    ingredients: [{ id: "kjottdeig", name, amount }],
+  });
+  assert.equal(parseDinnerDaySave(body(name200, amount40)).ok, true);
+  assert.equal(parseDinnerDaySave(body(name201, amount40)).ok, false);
+  assert.equal(parseDinnerDaySave(body(name200, amount41)).ok, false);
+  assert.equal(parseDinnerDaySave(body("  ", "400 g")).ok, false);
+  assert.equal(parseDinnerDaySave(body("Kjøttdeig", "  ")).ok, false);
+  assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: name200, quantity: amount40, week: "2026-10-05" }).ok, true);
+  assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: name201, quantity: amount40, week: "2026-10-05" }).ok, false);
+  assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: name200, quantity: amount41, week: "2026-10-05" }).ok, false);
+});
+
+test("shopping refresh collapses menu lines and keeps manual rows", () => {
+  const manual: ShoppingLine = {
+    id: "paprika",
+    aisleId: "gront",
+    name: "Paprika",
+    quantity: "2 stk",
+    done: false,
+    origin: "manual",
+    sortOrder: 0,
+  };
+  const next = refreshMenuItems(
+    [
+      { dayOrder: 0, sortOrder: 0, name: "Kjøttdeig", amount: "400 g" },
+      { dayOrder: 2, sortOrder: 0, name: "kjøttdeig", amount: "400 g" },
+      { dayOrder: 0, sortOrder: 1, name: "Melk", amount: "1 l" },
+      { dayOrder: 1, sortOrder: 0, name: "Melk", amount: "2 l" },
+    ],
+    [
+      {
+        id: "menu-melk",
+        aisleId: "ukemeny",
+        name: "Melk",
+        quantity: "1 l",
+        done: true,
+        origin: "menu",
+        sortOrder: 0,
+      },
+      {
+        id: "menu-old",
+        aisleId: "ukemeny",
+        name: "Nudler",
+        quantity: "1 pk",
+        done: false,
+        origin: "menu",
+        sortOrder: 1,
+      },
+      manual,
+    ],
+  );
+  const menu = next.filter((item) => item.origin === "menu");
+  assert.equal(menu.length, 3);
+  assert.equal(menu.filter((item) => item.quantity === "400 g").length, 1);
+  assert.equal(menu.find((item) => item.quantity === "400 g")?.name, "Kjøttdeig");
+  assert.equal(menu.find((item) => item.quantity === "1 l")?.done, true);
+  assert.equal(menu.find((item) => item.quantity === "2 l")?.done, false);
+  assert.equal(next.some((item) => item.id === "menu-old"), false);
+  assert.deepEqual(
+    next.find((item) => item.id === "paprika"),
+    manual,
+  );
+});
+
+test("a new Monday builds the dinner period from that Monday", () => {
+  assert.equal(dinnerPeriod("2026-10-05"), "05.10 – 11.10");
+  assert.equal(emptyDinnerDays("2026-10-05")[0]?.date, "05.10");
+  assert.equal(emptyDinnerDays("2026-10-05")[6]?.date, "11.10");
+  assert.equal(emptyDinnerDays("2026-10-05")[6]?.meal, null);
 });

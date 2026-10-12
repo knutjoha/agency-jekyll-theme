@@ -18,6 +18,12 @@ test("Oslo midnight follows daylight saving", () => {
   assert.equal(osloMidnightUtc("2026-11-01").toISOString(), "2026-10-31T23:00:00.000Z");
 });
 
+test("11 October 2026 is the week of 5 October and steps seven days", () => {
+  assert.equal(mondayOf("2026-10-11"), "2026-10-05");
+  assert.equal(addIsoDays(mondayOf("2026-10-11"), 7), "2026-10-12");
+  assert.equal(addIsoDays("2026-10-12", -7), "2026-10-05");
+});
+
 test("monday of the snapshot saturday is 28 September 2026", () => {
   assert.equal(mondayOf("2026-10-03"), "2026-09-28");
   assert.equal(mondayOf("2026-09-28"), "2026-09-28");
