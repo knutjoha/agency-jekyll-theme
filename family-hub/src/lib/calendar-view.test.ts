@@ -43,7 +43,9 @@ test("a title prefix decides one row", () => {
   assert.deepEqual(peopleNamedIn("Ulla-Marie:"), ["ulla"]);
   assert.deepEqual(peopleNamedIn("Ulla  Marie: lege"), ["ulla"]);
   assert.deepEqual(peopleNamedIn("Ulla Marie arbeid"), []);
-  assert.deepEqual(peopleNamedIn("Amelia og Hedda kamp"), []);
+  assert.deepEqual(peopleNamedIn("Amelia og Hedda kamp"), ["amelia", "hedda"]);
+  assert.deepEqual(peopleNamedIn("Hedda and Amelia"), ["amelia", "hedda"]);
+  assert.deepEqual(peopleNamedIn("Hedda and Amelia: svømming"), ["amelia", "hedda"]);
   assert.deepEqual(peopleNamedIn("Familiekveld"), []);
   assert.deepEqual(peopleNamedIn("Knutsson"), []);
   assert.deepEqual(peopleNamedIn("Knutsson:"), []);
@@ -353,12 +355,12 @@ test("name prefixes land on one row, and everything else lands on Family", () =>
   ];
   const payload = buildLivePayload(events, events, now, "2026-09-28");
 
-  assert.deepEqual(titles(payload, "amelia"), ["Amelia: Håndballkamp"]);
-  assert.deepEqual(weekTitles(payload, "amelia", SATURDAY), ["Amelia: Håndballkamp"]);
+  assert.deepEqual(titles(payload, "amelia"), ["Amelia: Håndballkamp", "Amelia og Hedda: kamp"]);
+  assert.deepEqual(weekTitles(payload, "amelia", SATURDAY), ["Amelia: Håndballkamp", "Amelia og Hedda: kamp"]);
   assert.deepEqual(titles(payload, "knut"), ["Knut:Trening", "knut: Trening", "Knut: henter Ulla Marie"]);
   assert.deepEqual(weekTitles(payload, "knut", SATURDAY), ["Knut:Trening", "knut: Trening", "Knut: henter Ulla Marie"]);
   assert.deepEqual(titles(payload, "ulla"), ["Ulla-Marie: jobb", "Ulla:", "Ulla Marie: middag", "Ulla Marie: Knut: middag"]);
-  assert.deepEqual(titles(payload, "hedda"), []);
+  assert.deepEqual(titles(payload, "hedda"), ["Amelia og Hedda: kamp"]);
   assert.deepEqual(titles(payload, "maja"), []);
   assert.deepEqual(titles(payload, "family"), [
     "Uten tittel",
@@ -366,7 +368,6 @@ test("name prefixes land on one row, and everything else lands on Family", () =>
     "Maja leirskole",
     "Knutsson: møte",
     "Knut : jobb",
-    "Amelia og Hedda: kamp",
     "Familiekveld",
   ]);
   assert.deepEqual(weekTitles(payload, "family", SATURDAY), titles(payload, "family"));
@@ -381,4 +382,52 @@ test("name prefixes land on one row, and everything else lands on Family", () =>
     ),
     false,
   );
+});
+
+test("names joined by and or og land on those rows, and a title with no names stays on Family", () => {
+  const now = new Date("2026-10-03T05:42:00.000Z");
+  const at = (hour: number, summary: string, description?: string) => ({
+    summary,
+    ...(description ? { description } : {}),
+    start: { dateTime: `2026-10-03T${String(hour).padStart(2, "0")}:00:00+02:00` },
+    end: { dateTime: `2026-10-03T${String(hour).padStart(2, "0")}:30:00+02:00` },
+  });
+  const events = [
+    at(7, "Knut: henter Ulla Marie"),
+    at(8, "Maja leirskole"),
+    at(9, "Hedda and Amelia"),
+    at(10, "Amelia and Hedda"),
+    at(11, "Hedda og Amelia"),
+    at(12, "Amelia og Hedda"),
+    at(13, "Hedda and Amelia: svømming"),
+    at(14, "Hedda and Amelia and Knut"),
+    at(15, "Ulla Marie og Knut"),
+    at(16, "Ulla-Marie and Maja"),
+    at(17, "Ulla and Ulla-Marie"),
+    at(18, "Hedda: Amelia and Knut"),
+    at(19, "Familiekveld", "Hedda and Amelia"),
+    at(20, "hedda AND amelia kamp"),
+  ];
+  const payload = buildLivePayload(events, events, now, "2026-09-28");
+  const shared = [
+    "Hedda and Amelia",
+    "Amelia and Hedda",
+    "Hedda og Amelia",
+    "Amelia og Hedda",
+    "Hedda and Amelia: svømming",
+    "Hedda and Amelia and Knut",
+  ];
+
+  assert.deepEqual(titles(payload, "amelia"), [...shared, "hedda AND amelia kamp"]);
+  assert.deepEqual(weekTitles(payload, "amelia", SATURDAY), titles(payload, "amelia"));
+  assert.deepEqual(titles(payload, "hedda"), [...shared, "Hedda: Amelia and Knut", "hedda AND amelia kamp"]);
+  assert.deepEqual(titles(payload, "knut"), ["Knut: henter Ulla Marie", "Hedda and Amelia and Knut", "Ulla Marie og Knut"]);
+  assert.deepEqual(titles(payload, "maja"), ["Ulla-Marie and Maja"]);
+  assert.deepEqual(titles(payload, "ulla"), ["Ulla Marie og Knut", "Ulla-Marie and Maja", "Ulla and Ulla-Marie"]);
+  assert.deepEqual(titles(payload, "family"), ["Maja leirskole", "Familiekveld"]);
+  assert.deepEqual(weekTitles(payload, "family", SATURDAY), ["Maja leirskole", "Familiekveld"]);
+  assert.equal(titles(payload, "family").includes("Hedda and Amelia"), false);
+  assert.equal(titles(payload, "amelia").includes("Knut: henter Ulla Marie"), false);
+  assert.equal(titles(payload, "knut").includes("Hedda: Amelia and Knut"), false);
+  assert.equal(titles(payload, "maja").includes("Maja leirskole"), false);
 });

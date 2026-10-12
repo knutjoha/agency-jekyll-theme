@@ -6,7 +6,12 @@ import { osloDateKey, osloParts } from "./oslo";
 const PERSON_ORDER: PersonId[] = ["amelia", "hedda", "maja", "knut", "ulla"];
 const LIVE_LANES: LaneId[] = [...PERSON_ORDER, "family"];
 
-const LANE_PREFIX = /^(amelia|hedda|maja|knut|ulla(?:[ -]+marie)?):/i;
+const NAME_SOURCE = "amelia|hedda|maja|knut|ulla(?:[ -]+marie)?";
+const LANE_PREFIX = new RegExp(`^(${NAME_SOURCE}):`, "i");
+const JOINED_NAMES = new RegExp(
+  `\\b(?:${NAME_SOURCE})(?:\\s+(?:and|og)\\s+(?:${NAME_SOURCE}))+\\b`,
+  "gi",
+);
 
 const FAMILY_LANE: Person = {
   id: "family",
@@ -27,7 +32,7 @@ export type CalendarEventInput = {
 
 type TimedEvent = {
   title: string;
-  lane: LaneId;
+  lanes: LaneId[];
   kind: "timed";
   start: Date;
   end: Date;
@@ -35,7 +40,7 @@ type TimedEvent = {
 
 type AllDayEvent = {
   title: string;
-  lane: LaneId;
+  lanes: LaneId[];
   kind: "allday";
   startDate: string;
   endDate: string;
@@ -104,17 +109,32 @@ export function calendarLane(id: LaneId): Person {
   return person;
 }
 
-function laneForTitle(title: string): LaneId {
-  const match = LANE_PREFIX.exec(title);
-  if (!match) return "family";
-  const head = match[1].toLowerCase();
+function personIdFromName(name: string): PersonId {
+  const head = name.toLowerCase();
   if (head === "amelia" || head === "hedda" || head === "maja" || head === "knut") return head;
   return "ulla";
 }
 
+function joinedPeople(title: string): PersonId[] {
+  const ids: PersonId[] = [];
+  for (const match of title.matchAll(new RegExp(JOINED_NAMES.source, "gi"))) {
+    for (const part of match[0].split(/\s+(?:and|og)\s+/i)) {
+      const id = personIdFromName(part);
+      if (!ids.includes(id)) ids.push(id);
+    }
+  }
+  return PERSON_ORDER.filter((id) => ids.includes(id));
+}
+
+function lanesForTitle(title: string): LaneId[] {
+  const prefix = LANE_PREFIX.exec(title);
+  if (prefix) return [personIdFromName(prefix[1])];
+  const joined = joinedPeople(title);
+  return joined.length > 0 ? joined : ["family"];
+}
+
 export function peopleNamedIn(text: string): PersonId[] {
-  const lane = laneForTitle(text.replace(/\s+/g, " ").trim());
-  return lane === "family" ? [] : [lane];
+  return lanesForTitle(text.replace(/\s+/g, " ").trim()).filter((lane): lane is PersonId => lane !== "family");
 }
 
 function eventTitle(event: CalendarEventInput): string {
@@ -122,30 +142,30 @@ function eventTitle(event: CalendarEventInput): string {
   return title || "Uten tittel";
 }
 
-function peopleFor(event: CalendarEventInput): LaneId {
-  return laneForTitle(eventTitle(event));
+function peopleFor(event: CalendarEventInput): LaneId[] {
+  return lanesForTitle(eventTitle(event));
 }
 
 function placeEvent(event: CalendarEventInput): PlacedEvent | null {
   if (event.status === "cancelled") return null;
   const title = eventTitle(event);
-  const lane = peopleFor(event);
+  const lanes = peopleFor(event);
   const startTime = event.start?.dateTime;
   if (startTime) {
     const start = new Date(startTime);
     if (Number.isNaN(start.getTime())) return null;
     const end = event.end?.dateTime ? new Date(event.end.dateTime) : new Date(start.getTime() + 60 * 60 * 1000);
     if (Number.isNaN(end.getTime()) || end <= start) {
-      return { title, lane, kind: "timed", start, end: new Date(start.getTime() + 60 * 60 * 1000) };
+      return { title, lanes, kind: "timed", start, end: new Date(start.getTime() + 60 * 60 * 1000) };
     }
-    return { title, lane, kind: "timed", start, end };
+    return { title, lanes, kind: "timed", start, end };
   }
 
   const startDate = event.start?.date ? parseIsoDate(event.start.date) : null;
   if (!startDate) return null;
   const endDate = event.end?.date && parseIsoDate(event.end.date) ? event.end.date : addIsoDays(startDate, 1);
   if (endDate <= startDate) return null;
-  return { title, lane, kind: "allday", startDate, endDate };
+  return { title, lanes, kind: "allday", startDate, endDate };
 }
 
 function coversDay(event: PlacedEvent, iso: string): boolean {
@@ -171,7 +191,7 @@ function compareEvents(a: CalendarEvent, b: CalendarEvent): number {
 function eventsForPerson(events: CalendarEventInput[], laneId: LaneId, iso: string): CalendarEvent[] {
   const placed = events.flatMap((event) => {
     const item = placeEvent(event);
-    if (!item || item.lane !== laneId || !coversDay(item, iso)) return [];
+    if (!item || !item.lanes.includes(laneId) || !coversDay(item, iso)) return [];
     return [{ time: timeLabel(item, iso), title: item.title }];
   });
   return placed.sort(compareEvents);
