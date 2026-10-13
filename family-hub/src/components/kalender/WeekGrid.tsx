@@ -178,7 +178,7 @@ export function WeekGrid({
         </div>
       </div>
       <div style={gridRowStyle}>
-        <div style={{ width: 140, flexShrink: 0 }} />
+        <div style={{ width: "min(140px, 22%)", minWidth: 88, flexShrink: 0 }} />
         {columns.map((column) => (
           <div
             key={column.key}
@@ -238,7 +238,8 @@ export function WeekGrid({
             <div key={row.personId} data-person={row.personId} style={{ ...gridRowStyle, flex: 1, minHeight: 0 }}>
               <div
                 style={{
-                  width: 140,
+                  width: "min(140px, 22%)",
+                  minWidth: 88,
                   flexShrink: 0,
                   boxSizing: "border-box",
                   display: "flex",
@@ -268,6 +269,8 @@ export function WeekGrid({
                       fontWeight: 400,
                       color: "var(--text)",
                       whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
                     }}
                   >
                     {person.name}
