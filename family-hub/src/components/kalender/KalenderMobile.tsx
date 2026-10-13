@@ -19,35 +19,23 @@ function personFor(id: LaneId): Person {
   return calendarLane(id);
 }
 
-function fixtureTitle(person: Person, time: string, fallback: string): string {
-  return person.events.find((event) => event.time === time)?.title ?? fallback;
-}
-
-function driverMissing(person: Person, time: string, blockWarning?: string): boolean {
-  if (blockWarning) return true;
-  return person.transport?.kind === "missing" && person.events.some((event) => event.time === time);
-}
-
-function agendaFor(week: CalendarWeek, dayIndex: number, source: CalendarSource): AgendaItem[] {
+function agendaFor(week: CalendarWeek, dayIndex: number): AgendaItem[] {
   const items = new Map<string, AgendaItem>();
   for (const row of week.rows) {
     const person = personFor(row.personId);
     for (const block of row.days[dayIndex]?.blocks ?? []) {
       if (block.kind !== "activity") continue;
-      const title = source === "fixture" ? fixtureTitle(person, block.time, block.title) : block.title;
-      const warning =
-        source === "fixture" ? driverMissing(person, block.time, block.warning) : Boolean(block.warning);
-      const key = `${block.time}|${title}`;
+      const key = `${block.time}|${block.title}`;
       const existing = items.get(key);
       if (existing) {
         existing.people.push(person);
-        existing.warning = existing.warning || warning;
+        existing.warning = existing.warning || Boolean(block.warning);
       } else {
         items.set(key, {
           time: block.time,
-          title,
+          title: block.title,
           people: [person],
-          warning,
+          warning: Boolean(block.warning),
         });
       }
     }
@@ -55,20 +43,8 @@ function agendaFor(week: CalendarWeek, dayIndex: number, source: CalendarSource)
   return [...items.values()].sort((left, right) => left.time.localeCompare(right.time));
 }
 
-function detailFor(item: AgendaItem, source: CalendarSource): string {
-  const names = item.people.map((person) => person.name).join(" · ");
-  if (item.warning) {
-    const missing = item.people.find((person) => person.transport?.kind === "missing");
-    return `${names} · ${missing?.transport?.label ?? "Sjåfør mangler"}`;
-  }
-  if (source === "fixture" && item.people.length === 1) {
-    const person = item.people[0];
-    const timed = person.events.filter((event) => event.time);
-    if (person.transport?.kind === "assigned" && timed.length === 1 && timed[0].time === item.time) {
-      return `${names} · ${person.transport.label}`;
-    }
-  }
-  return names;
+function detailFor(item: AgendaItem): string {
+  return item.people.map((person) => person.name).join(" · ");
 }
 
 function headingFor(key: string): string {
@@ -98,7 +74,7 @@ export function KalenderMobile({
     0,
     columns.findIndex((column) => column.key === selectedKey),
   );
-  const items = agendaFor(week, selectedIndex, source);
+  const items = agendaFor(week, selectedIndex);
 
   return (
     <div
@@ -262,7 +238,7 @@ export function KalenderMobile({
                     color: detailColor,
                   }}
                 >
-                  {detailFor(item, source)}
+                  {detailFor(item)}
                 </div>
               </div>
               {item.warning ? <TriangleAlert size={15} color="var(--accent)" /> : null}
