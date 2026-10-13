@@ -8,9 +8,11 @@ export function PersonRow({ person }: { person: Person }) {
       style={{
         flex: 1,
         minHeight: 0,
+        minWidth: 0,
         display: "flex",
         flexDirection: "row",
         alignItems: "center",
+        flexWrap: "wrap",
         gap: 16,
         padding: "10px 18px",
         borderRadius: "var(--r-nested)",
@@ -39,7 +41,9 @@ export function PersonRow({ person }: { person: Person }) {
       <div
         style={{
           width: 144,
-          flexShrink: 0,
+          maxWidth: "100%",
+          minWidth: 0,
+          flexShrink: 1,
           display: "flex",
           flexDirection: "column",
           gap: 2,
@@ -76,6 +80,7 @@ export function PersonRow({ person }: { person: Person }) {
           display: "flex",
           flexDirection: "row",
           alignItems: "center",
+          flexWrap: "wrap",
           gap: 10,
         }}
       >

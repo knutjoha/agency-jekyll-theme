@@ -14,7 +14,7 @@ export function TodoScreen({
   return (
     <HallwayPage {...hallway} mobile={(clock, weather) => <TodoMobile clock={clock} weather={weather} lanes={lanes} persisted={persisted} snapshot={hallway.snapshot} />}>
       {() => (
-        <div style={{ flex: 1, minHeight: 0, display: "flex", width: "100%" }}>
+        <div style={{ flex: 1, minHeight: 0, display: "flex", width: "100%", minWidth: 0, overflow: "hidden" }}>
           <TodoBoard lanes={lanes} persisted={persisted} snapshot={hallway.snapshot} />
         </div>
       )}

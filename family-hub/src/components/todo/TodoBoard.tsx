@@ -54,9 +54,11 @@ export function TodoBoard({ lanes: initialLanes, persisted, snapshot = false }: 
         flex: 1,
         minHeight: 0,
         width: "100%",
+        minWidth: 0,
         display: "flex",
         flexDirection: "column",
         gap: 16,
+        overflow: "hidden",
       }}
     >
       <div
@@ -68,9 +70,11 @@ export function TodoBoard({ lanes: initialLanes, persisted, snapshot = false }: 
           width: "100%",
           padding: "0 4px",
           boxSizing: "border-box",
+          flexWrap: "wrap",
+          gap: 12,
         }}
       >
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 14 }}>
+        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 14, minWidth: 0, flex: "1 1 auto" }}>
           <h1
             style={{
               margin: 0,
@@ -97,7 +101,7 @@ export function TodoBoard({ lanes: initialLanes, persisted, snapshot = false }: 
             {openCount} åpne · {doneCount} fullført i dag
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           {FILTERS.map((item) => {
             const active = filter === item.id;
             return (
@@ -137,6 +141,8 @@ export function TodoBoard({ lanes: initialLanes, persisted, snapshot = false }: 
           flexDirection: "row",
           gap: 16,
           alignItems: "stretch",
+          overflowX: "auto",
+          overflowY: "hidden",
         }}
       >
         {lanes.map((lane) => {
@@ -150,14 +156,16 @@ export function TodoBoard({ lanes: initialLanes, persisted, snapshot = false }: 
               key={lane.personId}
               data-person={lane.personId}
               style={{
-                flex: 1,
-                minWidth: 0,
+                flex: "1 1 200px",
+                minWidth: 200,
+                minHeight: 0,
                 height: "100%",
                 boxSizing: "border-box",
                 display: "flex",
                 flexDirection: "column",
                 gap: 12,
                 padding: 12,
+                overflow: "hidden",
                 background: "var(--tile)",
                 borderRadius: "var(--r-tile)",
               }}
@@ -200,6 +208,9 @@ export function TodoBoard({ lanes: initialLanes, persisted, snapshot = false }: 
                       lineHeight: "normal",
                       fontWeight: 400,
                       color: "var(--text)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                   >
                     {person.name}
@@ -237,7 +248,7 @@ export function TodoBoard({ lanes: initialLanes, persisted, snapshot = false }: 
                   {openInLane}
                 </div>
               </header>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%", flex: 1, minHeight: 0, overflowY: "auto" }}>
                 {visible.map((task) => (
                   <TaskCard
                     key={task.id}
@@ -399,8 +410,17 @@ function TaskCard({
       data-task={task.id}
       data-editing={editing ? "true" : undefined}
       data-done={task.done ? "true" : undefined}
+      role={editing ? undefined : "button"}
+      tabIndex={editing ? undefined : 0}
       onClick={() => {
         if (!editing) onOpen();
+      }}
+      onKeyDown={(event) => {
+        if (editing) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen();
+        }
       }}
       style={{
         position: "relative",

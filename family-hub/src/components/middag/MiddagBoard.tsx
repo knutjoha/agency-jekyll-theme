@@ -214,13 +214,14 @@ export function MiddagBoard({
   }
 
   return (
-    <div data-region="middag" data-week={week} style={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "row", gap: 20 }}>
+    <div data-region="middag" data-week={week} style={{ flex: 1, minHeight: 0, width: "100%", minWidth: 0, display: "flex", flexDirection: "row", flexWrap: "wrap", gap: 20 }}>
       <section
         data-region="menu"
         style={{
-          width: 820,
-          flexShrink: 0,
+          flex: "1 1 28rem",
+          minWidth: 0,
           height: "100%",
+          minHeight: 480,
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
@@ -230,7 +231,7 @@ export function MiddagBoard({
           borderRadius: "var(--r-tile)",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 14, width: "100%" }}>
+        <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 14, width: "100%", minWidth: 0 }}>
           <h1 style={titleStyle}>Ukemeny</h1>
           <div style={periodStyle}>
             Uke {weekNumber} · {period}
@@ -329,7 +330,8 @@ export function MiddagBoard({
                 position: "absolute",
                 left: lift.left,
                 top: lift.top,
-                width: FLOAT_WIDTH,
+                width: `min(${FLOAT_WIDTH}px, calc(100% - 24px))`,
+                maxWidth: "100%",
                 height: lift.live ? undefined : 78,
                 boxSizing: "border-box",
                 display: "flex",
@@ -356,9 +358,10 @@ export function MiddagBoard({
       <section
         data-region="shopping"
         style={{
-          flex: 1,
+          flex: "1 1 16rem",
           minWidth: 0,
           height: "100%",
+          minHeight: 280,
           boxSizing: "border-box",
           display: "flex",
           flexDirection: "column",
@@ -406,7 +409,7 @@ export function MiddagBoard({
               >
                 {item.done ? <Check size={13} color="var(--ink)" strokeWidth={2.5} /> : null}
               </button>
-              <div style={{ flex: 1, minWidth: 0, fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal", fontWeight: 400, color: item.done ? "var(--text-muted)" : "var(--text)" }}>
+              <div style={{ flex: 1, minWidth: 0, overflow: "hidden", overflowWrap: "anywhere", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal", fontWeight: 400, color: item.done ? "var(--text-muted)" : "var(--text)" }}>
                 {item.name}
               </div>
               <div style={{ fontFamily: "var(--font-data)", fontSize: 12, lineHeight: "normal", fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
@@ -569,6 +572,9 @@ const dishStyle = {
   lineHeight: "normal",
   fontWeight: 400,
   color: "var(--text)",
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
   whiteSpace: "nowrap" as const,
 };
 

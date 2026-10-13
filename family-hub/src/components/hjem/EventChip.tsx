@@ -10,7 +10,9 @@ export function EventChip({ event }: { event: CalendarEvent }) {
         padding: "10px 14px",
         borderRadius: "var(--r-nested)",
         background: "var(--tile-3)",
-        flexShrink: 0,
+        flexShrink: 1,
+        minWidth: 0,
+        maxWidth: "100%",
       }}
     >
       <div
@@ -33,6 +35,8 @@ export function EventChip({ event }: { event: CalendarEvent }) {
           fontWeight: 400,
           color: "var(--text-2)",
           whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
         }}
       >
         {event.title}
