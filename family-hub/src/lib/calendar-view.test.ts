@@ -12,6 +12,7 @@ import {
   mondayOf,
   parseIsoDate,
   peopleNamedIn,
+  upcomingSoon,
 } from "./calendar-view";
 import { readGoogleCredentials } from "./google-calendar";
 
@@ -77,6 +78,7 @@ test("missing Google settings stay on the fixture", () => {
   assert.equal(payload.week, calendarWeek);
   assert.equal(payload.todayPeople.length, 5);
   assert.equal(payload.week.rows.length, 5);
+  assert.deepEqual(payload.soon, []);
   assert.equal(
     payload.todayPeople.some((person) => person.id === "family"),
     false,
@@ -223,6 +225,10 @@ test("an event without a name prefix goes to Family, and an empty calendar is no
   assert.notEqual(empty.todayPeople[0]?.events, people[0]?.events);
   assert.notEqual(empty.week, calendarWeek);
   assert.equal(isCalendarPayload(empty), true);
+  assert.deepEqual(empty.soon, []);
+  const withoutSoon = { ...empty } as { soon?: unknown };
+  delete withoutSoon.soon;
+  assert.equal(isCalendarPayload(withoutSoon), true);
   assert.equal(
     isCalendarPayload({
       ...empty,
@@ -430,4 +436,111 @@ test("names joined by and or og land on those rows, and a title with no names st
   assert.equal(titles(payload, "amelia").includes("Knut: henter Ulla Marie"), false);
   assert.equal(titles(payload, "knut").includes("Hedda: Amelia and Knut"), false);
   assert.equal(titles(payload, "maja").includes("Maja leirskole"), false);
+});
+
+test("Snart lists the next ten upcoming events soonest first, and skips placeholders", () => {
+  const now = new Date("2026-10-13T08:00:00.000Z");
+  const empty = upcomingSoon([], now);
+  assert.deepEqual(empty, []);
+  assert.deepEqual(buildLivePayload([], [], now, "2026-10-12").soon, []);
+
+  const cancelled = upcomingSoon(
+    [
+      {
+        summary: "Avlyst fest",
+        status: "cancelled",
+        start: { dateTime: "2026-10-13T12:00:00+02:00" },
+        end: { dateTime: "2026-10-13T13:00:00+02:00" },
+      },
+    ],
+    now,
+  );
+  assert.deepEqual(cancelled, []);
+
+  const pastTimed = upcomingSoon(
+    [
+      {
+        summary: "Maja: Ida feirer",
+        start: { dateTime: "2026-10-12T17:00:00+02:00" },
+        end: { dateTime: "2026-10-12T18:00:00+02:00" },
+      },
+      {
+        summary: "Maja: Cheer kjøring",
+        start: { dateTime: "2026-10-13T16:15:00+02:00" },
+        end: { dateTime: "2026-10-13T16:45:00+02:00" },
+      },
+    ],
+    now,
+  );
+  assert.deepEqual(
+    pastTimed.map((item) => item.title),
+    ["Maja: Cheer kjøring"],
+  );
+  assert.equal(pastTimed[0]?.date, "13.10");
+  assert.equal(pastTimed[0]?.dotToken, "--p-maja");
+  assert.equal(pastTimed[0]?.meta, "Maja · 16:15 · i dag");
+
+  const allDay = upcomingSoon(
+    [
+      {
+        summary: "Høstferie",
+        start: { date: "2026-10-05" },
+        end: { date: "2026-10-10" },
+      },
+      {
+        summary: "Familiekveld",
+        start: { date: "2026-10-13" },
+        end: { date: "2026-10-14" },
+      },
+      {
+        summary: "Hedda and Amelia: svømming",
+        start: { dateTime: "2026-10-14T17:00:00+02:00" },
+        end: { dateTime: "2026-10-14T18:00:00+02:00" },
+      },
+    ],
+    now,
+  );
+  assert.deepEqual(
+    allDay.map((item) => item.title),
+    ["Familiekveld", "Hedda and Amelia: svømming"],
+  );
+  assert.equal(allDay[0]?.dotToken, "--text-muted");
+  assert.equal(allDay[0]?.meta, "Family · i dag");
+  assert.equal(allDay[1]?.dotToken, "--p-amelia");
+  assert.equal(allDay[1]?.meta, "Amelia og Hedda · 17:00 · i morgen");
+
+  const many = Array.from({ length: 12 }, (_, index) => ({
+    summary: `Maja: Økt ${index + 1}`,
+    start: { dateTime: `2026-10-20T${String(8 + index).padStart(2, "0")}:00:00+02:00` },
+    end: { dateTime: `2026-10-20T${String(9 + index).padStart(2, "0")}:00:00+02:00` },
+  }));
+  const capped = upcomingSoon(many, now);
+  assert.equal(capped.length, 10);
+  assert.deepEqual(
+    capped.map((item) => item.title),
+    many.slice(0, 10).map((event) => event.summary),
+  );
+  assert.equal(capped[0]?.meta, "Maja · 08:00 · om 7 dager");
+
+  const live = buildLivePayload([], [], now, "2026-10-12", [
+    {
+      summary: "Håndballtrening",
+      start: { dateTime: "2026-10-13T17:50:00+02:00" },
+      end: { dateTime: "2026-10-13T19:00:00+02:00" },
+    },
+    {
+      summary: "Amelia: Kiosksalg Amelia 12:30-14:30",
+      start: { dateTime: "2026-10-18T12:30:00+02:00" },
+      end: { dateTime: "2026-10-18T14:30:00+02:00" },
+    },
+  ]);
+  assert.equal(live.source, "google");
+  assert.deepEqual(
+    live.soon.map((item) => item.title),
+    ["Håndballtrening", "Amelia: Kiosksalg Amelia 12:30-14:30"],
+  );
+  assert.equal(
+    live.soon.some((item) => /Høstferie starter|Samtykke leirskole|Foreldremøte 8B|fyller 14|EU-kontroll|Pass utløper/.test(item.title)),
+    false,
+  );
 });

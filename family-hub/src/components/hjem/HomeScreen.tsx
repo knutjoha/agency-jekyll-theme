@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { dinner, soon } from "@/data/fixture";
+import { dinner } from "@/data/fixture";
 import { navHref } from "@/components/shell/navItems";
 import { DinnerTile } from "@/components/hjem/DinnerTile";
 import { HomeMobile } from "@/components/hjem/HomeMobile";
@@ -20,7 +20,12 @@ export function HomeScreen(props: HallwayData) {
     <HallwayPage
       {...props}
       mobile={(clock, weather) => (
-        <HomeMobile clock={clock} weather={weather} people={calendar.todayPeople} />
+        <HomeMobile
+          clock={clock}
+          weather={weather}
+          people={calendar.todayPeople}
+          soon={calendar.soon ?? []}
+        />
       )}
     >
       {(clock, weather) => (
@@ -63,7 +68,7 @@ export function HomeScreen(props: HallwayData) {
             <Link href={navHref("/middag", props.snapshot)} aria-label="Åpne middag" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
               <DinnerTile dinner={dinner} />
             </Link>
-            <SoonTile items={soon} />
+            <SoonTile items={calendar.soon ?? []} />
           </div>
         </div>
       )}
