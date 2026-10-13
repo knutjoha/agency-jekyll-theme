@@ -16,6 +16,7 @@ export function DinnerTile({ dinner }: { dinner: Dinner }) {
         padding: 24,
         borderRadius: "var(--r-tile)",
         background: "var(--tile)",
+        cursor: "pointer",
       }}
     >
       <div

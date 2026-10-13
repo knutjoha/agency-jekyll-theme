@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { dinner, soon } from "@/data/fixture";
+import { navHref } from "@/components/shell/navItems";
 import { DinnerTile } from "@/components/hjem/DinnerTile";
 import { HomeMobile } from "@/components/hjem/HomeMobile";
 import { SoonTile } from "@/components/hjem/SoonTile";
@@ -58,7 +60,9 @@ export function HomeScreen(props: HallwayData) {
               gap: 20,
             }}
           >
-            <DinnerTile dinner={dinner} />
+            <Link href={navHref("/middag", props.snapshot)} aria-label="Åpne middag" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
+              <DinnerTile dinner={dinner} />
+            </Link>
             <SoonTile items={soon} />
           </div>
         </div>
