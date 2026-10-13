@@ -26,15 +26,19 @@ export function HomeScreen(props: HallwayData) {
           style={{
             display: "flex",
             flexDirection: "row",
+            flexWrap: "wrap",
             gap: 20,
             alignItems: "flex-start",
+            width: "100%",
+            minWidth: 0,
+            flex: 1,
           }}
         >
           <div
             data-region="left"
             style={{
-              width: 786,
-              flexShrink: 0,
+              flex: "1 1 32rem",
+              minWidth: 0,
               display: "flex",
               flexDirection: "column",
               gap: 20,
@@ -46,8 +50,9 @@ export function HomeScreen(props: HallwayData) {
           <div
             data-region="right"
             style={{
-              width: 400,
-              flexShrink: 0,
+              flex: "1 1 18rem",
+              minWidth: 0,
+              maxWidth: 480,
               display: "flex",
               flexDirection: "column",
               gap: 20,

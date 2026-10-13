@@ -7,17 +7,20 @@ export function HomeHeader({ clock, weather }: { clock: OsloNow; weather: Weathe
     <header
       data-region="header"
       style={{
-        height: 120,
+        minHeight: 120,
         flexShrink: 0,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "row",
         justifyContent: "space-between",
         alignItems: "center",
+        gap: 16,
         padding: "0 8px",
+        minWidth: 0,
+        width: "100%",
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start", minWidth: 0, flex: "1 1 auto" }}>
         <div
           style={{
             fontFamily: "var(--font-body)",
@@ -33,11 +36,10 @@ export function HomeHeader({ clock, weather }: { clock: OsloNow; weather: Weathe
         <div
           style={{
             fontFamily: "var(--font-heading)",
-            fontSize: 42,
-            lineHeight: 1,
+            fontSize: "clamp(28px, 3.2vw, 42px)",
+            lineHeight: 1.1,
             fontWeight: 400,
             color: "var(--text)",
-            whiteSpace: "nowrap",
           }}
         >
           {clock.weekdayLine}
@@ -69,7 +71,7 @@ export function HomeHeader({ clock, weather }: { clock: OsloNow; weather: Weathe
           </div>
         </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 20 }}>
+      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 20, flexShrink: 0 }}>
         <div
           style={{
             padding: "8px 16px",
@@ -88,7 +90,7 @@ export function HomeHeader({ clock, weather }: { clock: OsloNow; weather: Weathe
         <div
           style={{
             fontFamily: "var(--font-data)",
-            fontSize: 52,
+            fontSize: "clamp(36px, 4vw, 52px)",
             lineHeight: 1,
             fontWeight: 400,
             color: "var(--text)",

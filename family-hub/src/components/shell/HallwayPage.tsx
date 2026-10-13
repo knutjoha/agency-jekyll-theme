@@ -68,11 +68,16 @@ export function HallwayPage({
       className={mobile ? "hallway-page has-phone" : "hallway-page"}
       style={{
         height: "100%",
+        minHeight: 0,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
         gap: 20,
         padding: 32,
+        overflow: "auto",
+        width: "100%",
+        maxWidth: 1400,
+        margin: "0 auto",
       }}
     >
       <div className="only-wide">

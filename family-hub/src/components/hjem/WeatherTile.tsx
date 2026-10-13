@@ -7,7 +7,8 @@ export function WeatherTile({ weather, nowHour }: { weather: WeatherView; nowHou
       data-region="weather"
       style={{
         width: "100%",
-        height: 200,
+        minHeight: 180,
+        height: "auto",
         flexShrink: 0,
         boxSizing: "border-box",
         display: "flex",
@@ -91,7 +92,7 @@ export function WeatherTile({ weather, nowHour }: { weather: WeatherView; nowHou
             fontWeight: 400,
             color: "var(--text-muted)",
             textAlign: "right",
-            whiteSpace: "nowrap",
+            minWidth: 0,
           }}
         >
           {weather.attribution}
