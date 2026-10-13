@@ -64,7 +64,8 @@ export function FristPicker({
   onClear,
   onReserve,
   phone,
-  fill,
+  iconOnly,
+  shortcutDates,
 }: {
   dueOn: string | null;
   today: string;
@@ -74,7 +75,8 @@ export function FristPicker({
   onClear: () => void;
   onReserve?: (height: number) => void;
   phone?: boolean;
-  fill?: boolean;
+  iconOnly?: boolean;
+  shortcutDates?: string[];
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -84,6 +86,8 @@ export function FristPicker({
   const [cursor, setCursor] = useState<MonthCursor>(() => monthOf(dueOn ?? today));
   const label = fristButtonLabel(dueOn, today);
   const tomorrow = addIsoDays(today, 1);
+  const shortcutSelected = Boolean(dueOn && shortcutDates?.includes(dueOn));
+  const calendarActive = open || Boolean(dueOn && !shortcutSelected);
   const monday = nextMonday(today);
   const shortcuts = [
     { label: "I dag", date: today, secondary: shortcutStamp(today, true) },
@@ -126,33 +130,54 @@ export function FristPicker({
           event.stopPropagation();
           onOpenChange(!open);
         }}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          gap: 6,
-          minWidth: 0,
-          maxWidth: "100%",
-          width: fill ? "100%" : undefined,
-          boxSizing: "border-box",
-          minHeight: fill ? 44 : undefined,
-          padding: phone ? "9px 12px" : "8px 10px",
-          border: "none",
-          borderRadius: "var(--r-full)",
-          background: "transparent",
-          boxShadow: dueOn || open
-            ? "inset 0 0 0 1.5px var(--accent)"
-            : "inset 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent)",
-          color: dueOn ? "var(--accent)" : "var(--text-muted)",
-          cursor: "pointer",
-          fontFamily: "var(--font-body)",
-          fontSize: 13,
-          lineHeight: "normal",
-          fontWeight: 400,
-        }}
+        aria-label={iconOnly ? "Frist" : undefined}
+        style={
+          iconOnly
+            ? {
+                width: 36,
+                height: 36,
+                flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                border: "none",
+                borderRadius: "var(--r-full)",
+                background: "var(--tile-3)",
+                boxShadow: calendarActive ? "inset 0 0 0 1.5px var(--accent)" : "none",
+                cursor: "pointer",
+              }
+            : {
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "flex-start",
+                gap: 6,
+                minWidth: 0,
+                maxWidth: "100%",
+                boxSizing: "border-box",
+                padding: phone ? "9px 12px" : "8px 10px",
+                border: "none",
+                borderRadius: "var(--r-full)",
+                background: "transparent",
+                boxShadow: dueOn || open
+                  ? "inset 0 0 0 1.5px var(--accent)"
+                  : "inset 0 0 0 1px color-mix(in srgb, var(--text) 18%, transparent)",
+                color: dueOn ? "var(--accent)" : "var(--text-muted)",
+                cursor: "pointer",
+                fontFamily: "var(--font-body)",
+                fontSize: 13,
+                lineHeight: "normal",
+                fontWeight: 400,
+              }
+        }
       >
-        <Calendar size={14} color={dueOn ? "var(--accent)" : "var(--text-muted)"} />
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+        <Calendar
+          size={iconOnly ? 16 : 14}
+          color={iconOnly ? (calendarActive ? "var(--accent)" : "var(--text-muted)") : dueOn ? "var(--accent)" : "var(--text-muted)"}
+        />
+        {iconOnly ? null : (
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>
+        )}
       </button>
       {open ? (
         <div
