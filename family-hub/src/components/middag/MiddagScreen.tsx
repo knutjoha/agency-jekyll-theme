@@ -11,6 +11,9 @@ import type { HallwayData } from "@/lib/hallway";
 import { dinnerBody, writeJson, writeJsonResult } from "@/lib/persist-client";
 
 const SAVE_ERROR = "Fikk ikke lagret middagen. Prøv igjen.";
+const TITLE_ERROR = "Skriv inn en rett.";
+const MINUTES_ERROR = "Minutter må være et heltall mellom 1 og 600.";
+const INGREDIENT_ERROR = "Hver ingrediens trenger navn og mengde.";
 const WEEK_PLAN_ERROR = "Fikk ikke laget forslag. Prøv igjen.";
 const DAY_PLAN_ERROR = "Fikk ikke byttet dagen. Prøv igjen.";
 
@@ -234,14 +237,16 @@ export function MiddagScreen({
       name: item.name.trim(),
       amount: item.amount.trim(),
     }));
-    if (
-      !title ||
-      !Number.isInteger(minutes) ||
-      minutes < 1 ||
-      minutes > 600 ||
-      ingredients.some((item) => !item.name || !item.amount)
-    ) {
-      setEditor({ ...current, error: SAVE_ERROR });
+    if (!title) {
+      setEditor({ ...current, error: TITLE_ERROR });
+      return;
+    }
+    if (!Number.isInteger(minutes) || minutes < 1 || minutes > 600) {
+      setEditor({ ...current, error: MINUTES_ERROR });
+      return;
+    }
+    if (ingredients.some((item) => !item.name || !item.amount)) {
+      setEditor({ ...current, error: INGREDIENT_ERROR });
       return;
     }
     const at = weekRef.current;
