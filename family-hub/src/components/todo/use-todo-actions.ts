@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { PersonId, TodoLane, TodoTask } from "@/data/types";
 import { dueFields } from "@/lib/frist";
 import { osloDateKey } from "@/lib/oslo";
@@ -77,6 +77,15 @@ export function useTodoActions(initialLanes: TodoLane[], persisted: boolean) {
   const op = useRef(0);
   const inflight = useRef(new Map<string, Promise<boolean>>());
   const today = osloDateKey(new Date());
+
+  useEffect(() => {
+    if (!removed) return;
+    const id = removed.task.id;
+    const timeout = window.setTimeout(() => {
+      setRemoved((current) => (current?.task.id === id ? null : current));
+    }, 6000);
+    return () => window.clearTimeout(timeout);
+  }, [removed]);
 
   function updateTask(id: string, patch: Partial<TodoTask>) {
     setLanes((current) =>

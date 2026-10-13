@@ -67,7 +67,7 @@ export function TodoMobile({
         display: "flex",
         flexDirection: "column",
         gap: 12,
-        padding: "16px 16px 12px",
+        padding: removed ? "16px 16px 80px" : "16px 16px 12px",
         boxSizing: "border-box",
       }}
     >
@@ -268,7 +268,7 @@ export function TodoMobile({
             position: "fixed",
             left: 16,
             right: 16,
-            bottom: "calc(72px + env(safe-area-inset-bottom))",
+            bottom: "calc(60px + env(safe-area-inset-bottom))",
             zIndex: 30,
             height: 56,
             boxSizing: "border-box",
