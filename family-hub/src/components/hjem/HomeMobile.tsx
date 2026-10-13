@@ -76,25 +76,6 @@ function PersonCard({ person }: { person: Person }) {
           >
             {person.name}
           </div>
-          {person.transport ? (
-            <div
-              data-transport={person.transport.kind}
-              style={{
-                padding: "5px 9px",
-                borderRadius: "var(--r-full)",
-                background: person.transport.kind === "missing" ? "var(--warn-bg)" : "var(--tile-3)",
-                fontFamily: "var(--font-body)",
-                fontSize: 11,
-                lineHeight: 1,
-                fontWeight: 400,
-                color: person.transport.kind === "missing" ? "var(--accent)" : "var(--text-2)",
-                whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              {person.transport.label}
-            </div>
-          ) : null}
         </div>
         <div
           style={{
@@ -105,7 +86,7 @@ function PersonCard({ person }: { person: Person }) {
             color: "var(--text-muted)",
           }}
         >
-          {eventLine(person.events)}
+          {eventLine(person.events) || person.detail}
         </div>
       </div>
     </article>

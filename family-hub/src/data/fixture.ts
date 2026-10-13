@@ -7,11 +7,7 @@ export const people: Person[] = [
     initial: "A",
     detail: "8A · Ringstabekk",
     colorToken: "--p-amelia",
-    events: [
-      { time: "11:00", title: "Håndballkamp" },
-      { time: "14:00", title: "Teaterprøve" },
-    ],
-    transport: { kind: "missing", label: "Sjåfør mangler" },
+    events: [],
   },
   {
     id: "hedda",
@@ -19,8 +15,7 @@ export const people: Person[] = [
     initial: "H",
     detail: "8B · Ringstabekk",
     colorToken: "--p-hedda",
-    events: [{ time: "13:00", title: "Håndballkamp" }],
-    transport: { kind: "assigned", label: "Pappa 12:15" },
+    events: [],
   },
   {
     id: "maja",
@@ -28,8 +23,7 @@ export const people: Person[] = [
     initial: "M",
     detail: "6C · Jar skole",
     colorToken: "--p-maja",
-    events: [{ time: "10:00", title: "Cheer-stevne" }],
-    transport: { kind: "assigned", label: "Mamma 09:15" },
+    events: [],
   },
   {
     id: "knut",
@@ -37,11 +31,7 @@ export const people: Person[] = [
     initial: "K",
     detail: "Pappa",
     colorToken: "--p-knut",
-    events: [
-      { time: "08:00", title: "Trening" },
-      { time: "19:30", title: "Familiekveld" },
-    ],
-    transport: { kind: "assigned", label: "Kjører Hedda" },
+    events: [],
   },
   {
     id: "ulla",
@@ -49,11 +39,7 @@ export const people: Person[] = [
     initial: "U",
     detail: "Mamma",
     colorToken: "--p-ulla",
-    events: [
-      { time: null, title: "Arbeid – ukjent" },
-      { time: "19:30", title: "Familiekveld" },
-    ],
-    transport: { kind: "assigned", label: "Kjører Maja" },
+    events: [],
   },
 ];
 

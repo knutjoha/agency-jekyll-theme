@@ -148,7 +148,7 @@ test("a connected calendar places named events and keeps an empty week empty", (
 
   const amelia = payload.todayPeople.find((person) => person.id === "amelia");
   assert.deepEqual(amelia?.events, [{ time: "09:00", title: "Amelia: Håndballkamp" }]);
-  assert.equal(amelia?.transport?.kind, "missing");
+  assert.equal(amelia?.transport, undefined);
   assert.deepEqual(titles(payload, "amelia"), ["Amelia: Håndballkamp"]);
   assert.deepEqual(weekTitles(payload, "amelia", SATURDAY), ["Amelia: Håndballkamp"]);
 
