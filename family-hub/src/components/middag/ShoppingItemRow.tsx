@@ -19,9 +19,10 @@ export function ShoppingItemRow({
         aria-pressed={Boolean(item.done)}
         aria-label={item.done ? `Merk ${item.name} som ikke kjøpt` : `Kjøp ${item.name}`}
         onClick={() => onToggle(item.id)}
+        data-check-item={item.id}
         style={{
-          width: 44,
-          height: 44,
+          width: 20,
+          height: 20,
           flexShrink: 0,
           display: "flex",
           alignItems: "center",
