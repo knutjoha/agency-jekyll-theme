@@ -354,7 +354,7 @@ export function MiddagScreen({
       )}
     >
       {(clock) => (
-        <div style={{ flex: 1, minHeight: 0, display: "flex", width: "100%" }}>
+        <div style={{ flex: 1, minHeight: 0, display: "flex", width: "100%", minWidth: 0, overflow: "auto" }}>
           <MiddagBoard clock={clock} {...shared} />
           {editor ? (
             <DinnerEditor
