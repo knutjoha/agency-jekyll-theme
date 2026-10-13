@@ -16,8 +16,9 @@ export function TodayTile({
       data-calendar-source={source}
       style={{
         width: "100%",
-        height: 600,
-        flexShrink: 0,
+        minHeight: 280,
+        height: "auto",
+        flex: "1 1 auto",
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
