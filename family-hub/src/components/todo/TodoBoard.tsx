@@ -684,27 +684,30 @@ function EditorActions({
   onReserve?: (height: number) => void;
 }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-        <FristPicker
-          dueOn={dueOn}
-          today={today}
-          open={pickerOpen}
-          onOpenChange={onPicker}
-          onChange={onDue}
-          onClear={onClear}
-          onReserve={onReserve}
-        />
+    <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", minWidth: 0 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <FristPicker
+            fill
+            dueOn={dueOn}
+            today={today}
+            open={pickerOpen}
+            onOpenChange={onPicker}
+            onChange={onDue}
+            onClear={onClear}
+            onReserve={onReserve}
+          />
+        </div>
         {onDelete ? <IconDelete label={deleteLabel || "oppgave"} onClick={onDelete} /> : null}
       </div>
-      <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
             onCancel();
           }}
-          style={ghostPill}
+          style={actionGhost}
         >
           Avbryt
         </button>
@@ -714,7 +717,7 @@ function EditorActions({
             event.stopPropagation();
             onSave();
           }}
-          style={savePill}
+          style={actionSave}
         >
           Lagre
         </button>
@@ -797,14 +800,25 @@ const pillBase = {
   whiteSpace: "nowrap" as const,
 };
 
-const ghostPill = {
+const actionPill = {
   ...pillBase,
+  flex: 1,
+  minWidth: 0,
+  minHeight: 44,
+  boxSizing: "border-box" as const,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const actionGhost = {
+  ...actionPill,
   background: "var(--tile-3)",
   color: "var(--text-2)",
 };
 
-const savePill = {
-  ...pillBase,
+const actionSave = {
+  ...actionPill,
   background: "var(--accent)",
   color: "var(--ink)",
 };

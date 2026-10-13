@@ -64,6 +64,7 @@ export function FristPicker({
   onClear,
   onReserve,
   phone,
+  fill,
 }: {
   dueOn: string | null;
   today: string;
@@ -73,6 +74,7 @@ export function FristPicker({
   onClear: () => void;
   onReserve?: (height: number) => void;
   phone?: boolean;
+  fill?: boolean;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -127,9 +129,13 @@ export function FristPicker({
         style={{
           display: "inline-flex",
           alignItems: "center",
+          justifyContent: "flex-start",
           gap: 6,
           minWidth: 0,
           maxWidth: "100%",
+          width: fill ? "100%" : undefined,
+          boxSizing: "border-box",
+          minHeight: fill ? 44 : undefined,
           padding: phone ? "9px 12px" : "8px 10px",
           border: "none",
           borderRadius: "var(--r-full)",

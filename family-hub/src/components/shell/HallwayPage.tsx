@@ -76,7 +76,7 @@ export function HallwayPage({
         padding: 32,
         overflow: "auto",
         width: "100%",
-        maxWidth: 1400,
+        maxWidth: 1820,
         margin: "0 auto",
       }}
     >
