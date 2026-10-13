@@ -67,6 +67,21 @@ export function draftKey(personId: PersonId): string {
   return `draft:${personId}`;
 }
 
+export function useCancelOnOutsidePress(active: boolean, onCancel: () => void) {
+  const onCancelRef = useRef(onCancel);
+  onCancelRef.current = onCancel;
+  useEffect(() => {
+    if (!active) return;
+    function onPointerDown(event: PointerEvent) {
+      const node = event.target as HTMLElement | null;
+      if (node?.closest("[data-todo-editor], [data-frist-popover], [data-toast]")) return;
+      onCancelRef.current();
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [active]);
+}
+
 export function useTodoActions(initialLanes: TodoLane[], persisted: boolean) {
   const [lanes, setLanes] = useState(() => cloneLanes(initialLanes));
   const [drafts, setDrafts] = useState<Partial<Record<PersonId, DraftState>>>({});

@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Calendar, Check, Plus, Trash2, TriangleAlert, Undo2 } from "lucide-react";
-import { FristPicker } from "@/components/todo/FristPicker";
-import { draftKey, useTodoActions } from "@/components/todo/use-todo-actions";
+import { Calendar, Plus, Trash2, TriangleAlert, Undo2 } from "lucide-react";
+import { CheckBox, TodoEditor } from "@/components/todo/TodoEditor";
+import { draftKey, useCancelOnOutsidePress, useTodoActions } from "@/components/todo/use-todo-actions";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { people } from "@/data/fixture";
 import type { Person, PersonId, TodoLane, TodoTask, WeatherView } from "@/data/types";
@@ -59,6 +59,11 @@ export function TodoMobile({
   const person = personFor(selected.personId);
   const draft = drafts[selected.personId];
   const drafting = draft !== undefined;
+  const editingTask = selected.tasks.find((task) => task.editing);
+  useCancelOnOutsidePress(Boolean(editingTask || drafting), () => {
+    if (editingTask) actions.cancelEdit(editingTask.id);
+    if (drafting) actions.cancelDraft(selected.personId);
+  });
 
   return (
     <div
@@ -193,7 +198,6 @@ export function TodoMobile({
                 actions.setDue(task.id, null);
                 actions.setPickerId(null);
               }}
-              onCancel={() => actions.cancelEdit(task.id)}
               onSave={() => actions.saveEdit(task)}
               onDelete={() => actions.deleteTask(task.id)}
             />
@@ -223,7 +227,6 @@ export function TodoMobile({
               actions.setDraftDue(selected.personId, null);
               actions.setPickerId(null);
             }}
-            onCancel={() => actions.cancelDraft(selected.personId)}
             onSave={() => actions.saveDraft(selected.personId)}
           />
         ) : null}
@@ -484,7 +487,6 @@ function TaskCard({
   onDue,
   onPicker,
   onClear,
-  onCancel,
   onSave,
   onDelete,
 }: {
@@ -497,7 +499,6 @@ function TaskCard({
   onDue: (dueOn: string) => void;
   onPicker: (open: boolean) => void;
   onClear: () => void;
-  onCancel: () => void;
   onSave: () => void;
   onDelete: () => void;
 }) {
@@ -515,6 +516,7 @@ function TaskCard({
       onClick={() => {
         if (!editing) onOpen();
       }}
+      data-todo-editor={editing ? "true" : undefined}
       style={{
         position: "relative",
         zIndex: pickerOpen ? 40 : undefined,
@@ -531,41 +533,43 @@ function TaskCard({
         cursor: editing ? "auto" : "pointer",
       }}
     >
-      <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 11, width: "100%" }}>
-        <CheckBox done={Boolean(task.done)} label={task.title} onToggle={onToggle} />
-        {editing ? (
-          <TitleField value={task.title} onChange={onTitle} onSave={onSave} label={task.title || "Oppgavetittel"} autoFocus />
-        ) : (
-          <div
-            style={{
-              flex: 1,
-              minWidth: 0,
-              fontFamily: "var(--font-body)",
-              fontSize: 15,
-              lineHeight: 1.2,
-              fontWeight: 400,
-              color: task.done ? "var(--text-muted)" : "var(--text)",
-            }}
-          >
-            {task.title}
-          </div>
-        )}
-      </div>
-      {showDue ? <DueRow due={dueLabel ?? ""} overdue={dueOverdue} /> : null}
       {editing ? (
-        <EditorActions
+        <TodoEditor
+          phone
+          title={task.title}
           dueOn={task.dueOn ?? null}
           today={today}
           pickerOpen={pickerOpen}
+          onTitle={onTitle}
           onDue={onDue}
           onPicker={onPicker}
           onClear={onClear}
-          onCancel={onCancel}
           onSave={onSave}
           onDelete={onDelete}
           onReserve={room.setReserved}
+          autoFocus
         />
-      ) : null}
+      ) : (
+        <>
+          <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 11, width: "100%" }}>
+            <CheckBox done={Boolean(task.done)} label={task.title} onToggle={onToggle} />
+            <div
+              style={{
+                flex: 1,
+                minWidth: 0,
+                fontFamily: "var(--font-body)",
+                fontSize: 15,
+                lineHeight: 1.2,
+                fontWeight: 400,
+                color: task.done ? "var(--text-muted)" : "var(--text)",
+              }}
+            >
+              {task.title}
+            </div>
+          </div>
+          {showDue ? <DueRow due={dueLabel ?? ""} overdue={dueOverdue} /> : null}
+        </>
+      )}
     </article>
     {room.reserved > 0 ? <div aria-hidden style={{ height: room.reserved }} /> : null}
     </div>
@@ -581,7 +585,6 @@ function DraftCard({
   onDue,
   onPicker,
   onClear,
-  onCancel,
   onSave,
 }: {
   title: string;
@@ -592,7 +595,6 @@ function DraftCard({
   onDue: (dueOn: string) => void;
   onPicker: (open: boolean) => void;
   onClear: () => void;
-  onCancel: () => void;
   onSave: () => void;
 }) {
   const room = usePopoverRoom(pickerOpen);
@@ -600,6 +602,7 @@ function DraftCard({
     <div ref={room.ref}>
     <article
       data-draft="true"
+      data-todo-editor="true"
       style={{
         position: "relative",
         zIndex: pickerOpen ? 40 : undefined,
@@ -615,238 +618,23 @@ function DraftCard({
         outlineOffset: -0.75,
       }}
     >
-      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 11, width: "100%" }}>
-        <span
-          aria-hidden
-          style={{
-            width: 26,
-            height: 26,
-            flexShrink: 0,
-            borderRadius: 8,
-            outline: "1.5px solid var(--text-muted)",
-            outlineOffset: -0.75,
-          }}
-        />
-        <TitleField value={title} onChange={onTitle} onSave={onSave} label="Ny oppgave" autoFocus />
-      </div>
-      <EditorActions
+      <TodoEditor
+        phone
+        title={title}
         dueOn={dueOn}
         today={today}
         pickerOpen={pickerOpen}
+        onTitle={onTitle}
         onDue={onDue}
         onPicker={onPicker}
         onClear={onClear}
-        onCancel={onCancel}
         onSave={onSave}
         onReserve={room.setReserved}
+        autoFocus
       />
     </article>
     {room.reserved > 0 ? <div aria-hidden style={{ height: room.reserved }} /> : null}
     </div>
-  );
-}
-
-function CheckBox({ done, label, onToggle }: { done: boolean; label: string; onToggle: () => void }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={done}
-      aria-label={done ? `Merk ${label} som åpen` : `Fullfør ${label}`}
-      onPointerDown={(event) => event.stopPropagation()}
-      onClick={(event) => {
-        event.stopPropagation();
-        onToggle();
-      }}
-      style={{
-        width: 44,
-        height: 44,
-        flexShrink: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 0,
-        border: "none",
-        borderRadius: 8,
-        cursor: "pointer",
-        background: done ? "var(--ok)" : "transparent",
-        outline: done ? "none" : "1.5px solid var(--text-muted)",
-        outlineOffset: done ? undefined : -0.75,
-      }}
-    >
-      {done ? <Check size={16} color="var(--ink)" strokeWidth={2.5} /> : null}
-    </button>
-  );
-}
-
-function TitleField({
-  value,
-  onChange,
-  onSave,
-  label,
-  autoFocus,
-}: {
-  value: string;
-  onChange: (value: string) => void;
-  onSave: () => void;
-  label: string;
-  autoFocus?: boolean;
-}) {
-  const fieldRef = useRef<HTMLTextAreaElement>(null);
-  useEffect(() => {
-    const node = fieldRef.current;
-    if (!node || !autoFocus || node.getClientRects().length === 0) return;
-    node.focus();
-  }, [autoFocus]);
-  return (
-    <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "row", alignItems: "flex-end", gap: 3 }}>
-      <span style={{ position: "relative", flex: 1, minWidth: 0 }}>
-        <span
-          aria-hidden
-          style={{
-            visibility: "hidden",
-            whiteSpace: "pre-wrap",
-            overflowWrap: "anywhere",
-            display: "block",
-            fontFamily: "var(--font-body)",
-            fontSize: 15,
-            lineHeight: 1.2,
-            fontWeight: 400,
-          }}
-        >
-          {value || " "}
-        </span>
-        <textarea
-          ref={fieldRef}
-          aria-label={label}
-          value={value}
-          rows={1}
-          onClick={(event) => event.stopPropagation()}
-          onChange={(event) => onChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              onSave();
-            }
-          }}
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            margin: 0,
-            padding: 0,
-            border: "none",
-            resize: "none",
-            overflow: "hidden",
-            outline: "none",
-            background: "transparent",
-            caretColor: "transparent",
-            color: "var(--text)",
-            fontFamily: "var(--font-body)",
-            fontSize: 15,
-            lineHeight: 1.2,
-            fontWeight: 400,
-          }}
-        />
-      </span>
-      <span aria-hidden style={{ width: 2, height: 19, flexShrink: 0, background: "var(--accent)" }} />
-    </div>
-  );
-}
-
-function EditorActions({
-  dueOn,
-  today,
-  pickerOpen,
-  onDue,
-  onPicker,
-  onClear,
-  onCancel,
-  onSave,
-  onDelete,
-  onReserve,
-}: {
-  dueOn: string | null;
-  today: string;
-  pickerOpen: boolean;
-  onDue: (dueOn: string) => void;
-  onPicker: (open: boolean) => void;
-  onClear: () => void;
-  onCancel: () => void;
-  onSave: () => void;
-  onDelete?: () => void;
-  onReserve?: (height: number) => void;
-}) {
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8, width: "100%" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-        <FristPicker
-          phone
-          dueOn={dueOn}
-          today={today}
-          open={pickerOpen}
-          onOpenChange={onPicker}
-          onChange={onDue}
-          onClear={onClear}
-          onReserve={onReserve}
-        />
-        {onDelete ? <PhoneDelete onClick={onDelete} /> : null}
-      </div>
-      <div style={{ display: "flex", gap: 8, marginLeft: "auto" }}>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onCancel();
-          }}
-          style={ghostPill}
-        >
-          Avbryt
-        </button>
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onSave();
-          }}
-          style={savePill}
-        >
-          Lagre
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function PhoneDelete({ onClick }: { onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 7,
-        flexShrink: 0,
-        padding: "9px 14px",
-        border: "none",
-        borderRadius: "var(--r-full)",
-        background: DELETE_BG,
-        color: DELETE_FG,
-        cursor: "pointer",
-        fontFamily: "var(--font-body)",
-        fontSize: 13,
-        lineHeight: "normal",
-        fontWeight: 400,
-      }}
-    >
-      <Trash2 size={14} color={DELETE_FG} />
-      Slett
-    </button>
   );
 }
 
@@ -859,7 +647,7 @@ function DueRow({ due, overdue }: { due: string; overdue: boolean }) {
         flexDirection: "row",
         alignItems: "center",
         gap: 7,
-        paddingLeft: 37,
+        paddingLeft: 33,
         width: "100%",
         boxSizing: "border-box",
         color,
@@ -882,30 +670,6 @@ function DueRow({ due, overdue }: { due: string; overdue: boolean }) {
     </div>
   );
 }
-
-const pillBase = {
-  padding: "9px 16px",
-  border: "none",
-  borderRadius: "var(--r-full)",
-  cursor: "pointer",
-  fontFamily: "var(--font-body)",
-  fontSize: 13,
-  lineHeight: "normal",
-  fontWeight: 400,
-  whiteSpace: "nowrap" as const,
-};
-
-const ghostPill = {
-  ...pillBase,
-  background: "var(--tile-3)",
-  color: "var(--text-2)",
-};
-
-const savePill = {
-  ...pillBase,
-  background: "var(--accent)",
-  color: "var(--ink)",
-};
 
 const undoPill = {
   display: "inline-flex",
