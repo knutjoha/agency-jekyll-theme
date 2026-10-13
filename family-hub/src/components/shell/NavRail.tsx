@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { NavPendingBeacon } from "@/components/shell/NavOrbs";
 import { isNavActive, navHref, navItems } from "@/components/shell/navItems";
 
 export function NavRail() {
@@ -69,6 +70,7 @@ export function NavRail() {
               background: active ? "var(--tile-2)" : "transparent",
             }}
           >
+            <NavPendingBeacon href={href} />
             <Icon size={26} color={active ? "var(--accent)" : "var(--text-muted)"} />
             <span
               style={{

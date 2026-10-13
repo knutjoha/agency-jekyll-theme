@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { NavPendingBeacon } from "@/components/shell/NavOrbs";
 import { isNavActive, navHref, navItems } from "@/components/shell/navItems";
 
 export function MobileTabBar() {
@@ -23,6 +24,7 @@ export function MobileTabBar() {
               aria-current={active ? "page" : undefined}
               className="tab-bar-item"
             >
+              <NavPendingBeacon href={navHref(item.href, snapshot)} />
               <Icon size={23} color={active ? "var(--accent)" : "var(--text-muted)"} />
               <span style={{ color: active ? "var(--text)" : "var(--text-muted)" }}>{item.label}</span>
             </Link>
