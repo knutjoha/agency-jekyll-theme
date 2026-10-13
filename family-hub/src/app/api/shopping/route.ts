@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createShoppingItem, loadShopping, updateShoppingItem } from "@/lib/household/store";
+import { createShoppingItem, deleteShoppingItem, loadShopping, updateShoppingItem } from "@/lib/household/store";
 
 export const dynamic = "force-dynamic";
 
@@ -35,5 +35,12 @@ export async function PATCH(request: Request) {
   const body = await readJson(request);
   if (body === null) return NextResponse.json({ persisted: false }, { status: 400, headers });
   const result = await updateShoppingItem(body);
+  return NextResponse.json(result, { status: result.persisted ? 200 : 400, headers });
+}
+
+export async function DELETE(request: Request) {
+  const body = await readJson(request);
+  if (body === null) return NextResponse.json({ persisted: false }, { status: 400, headers });
+  const result = await deleteShoppingItem(body);
   return NextResponse.json(result, { status: result.persisted ? 200 : 400, headers });
 }

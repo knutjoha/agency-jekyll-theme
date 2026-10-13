@@ -9,6 +9,7 @@ import {
   parseDinnerDaySave,
   parseDinnerDays,
   parseShoppingCreate,
+  parseShoppingDelete,
   parseTodoCreate,
   parseTodoDelete,
   parseTodoPatch,
@@ -178,6 +179,9 @@ test("parses writes and drops anything that is not a list field", () => {
   assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: "Melk", quantity: "1 l", week: "2026-10-05" }).ok, true);
   assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: "Melk", quantity: "" }).ok, false);
   assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: "Melk", quantity: "1 l" }).ok, false);
+  assert.equal(parseShoppingDelete({ id: "melk" }).ok, true);
+  assert.equal(parseShoppingDelete({ id: "../x" }).ok, false);
+  assert.equal(parseShoppingDelete({}).ok, false);
 
   const days = ["man", "tir", "ons", "tor", "fre", "lor", "son"].map((id) =>
     id === "fre"

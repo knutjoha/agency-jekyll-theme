@@ -135,6 +135,10 @@ export type ShoppingPatch = {
   done: boolean;
 };
 
+export type ShoppingDelete = {
+  id: string;
+};
+
 type Parsed<T> = { ok: true; value: T } | { ok: false };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -481,4 +485,11 @@ export function parseShoppingPatch(input: unknown): Parsed<ShoppingPatch> {
   const id = cleanId(input.id);
   if (!id || typeof input.done !== "boolean") return { ok: false };
   return { ok: true, value: { id, done: input.done } };
+}
+
+export function parseShoppingDelete(input: unknown): Parsed<ShoppingDelete> {
+  if (!isRecord(input)) return { ok: false };
+  const id = cleanId(input.id);
+  if (!id) return { ok: false };
+  return { ok: true, value: { id } };
 }

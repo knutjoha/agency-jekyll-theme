@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, GripVertical, Move, Pencil, Plus, RefreshCw, Timer } from "lucide-react";
+import { GripVertical, Move, Pencil, Plus, RefreshCw, Timer } from "lucide-react";
 import { WeekButtons, dayIsToday } from "@/components/middag/DinnerEditor";
+import { ShoppingItemRow } from "@/components/middag/ShoppingItemRow";
 import { stagedDrag } from "@/data/middag";
 import type { GroceryAisle, Meal, MenuDay } from "@/data/types";
 import { isoWeekNumber, type OsloNow } from "@/lib/oslo";
@@ -46,6 +47,7 @@ export function MiddagBoard({
   onCommitDays,
   onToggleItem,
   onAddItem,
+  onRemoveItem,
   onPlanWeek,
   onPlanDay,
 }: {
@@ -65,6 +67,7 @@ export function MiddagBoard({
   onCommitDays: (days: MenuDay[]) => void;
   onToggleItem: (id: string) => void;
   onAddItem: (name: string) => void;
+  onRemoveItem: (id: string) => void;
   onPlanWeek: () => void;
   onPlanDay: (dayId: string) => void;
 }) {
@@ -385,37 +388,7 @@ export function MiddagBoard({
         </div>
         <div style={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column", gap: 8, overflow: "auto" }}>
           {aisles.flatMap((aisle) => aisle.items).map((item) => (
-            <div key={item.id} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 11, padding: "3px 0", width: "100%" }}>
-              <button
-                type="button"
-                aria-pressed={Boolean(item.done)}
-                aria-label={item.done ? `Merk ${item.name} som ikke kjøpt` : `Kjøp ${item.name}`}
-                onClick={() => onToggleItem(item.id)}
-                style={{
-                  width: 44,
-                  height: 44,
-                  flexShrink: 0,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: 0,
-                  border: "none",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  background: item.done ? "var(--ok)" : "transparent",
-                  outline: item.done ? "none" : "1.5px solid var(--text-muted)",
-                  outlineOffset: item.done ? undefined : -0.75,
-                }}
-              >
-                {item.done ? <Check size={13} color="var(--ink)" strokeWidth={2.5} /> : null}
-              </button>
-              <div style={{ flex: 1, minWidth: 0, overflow: "hidden", overflowWrap: "anywhere", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal", fontWeight: 400, color: item.done ? "var(--text-muted)" : "var(--text)" }}>
-                {item.name}
-              </div>
-              <div style={{ fontFamily: "var(--font-data)", fontSize: 12, lineHeight: "normal", fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-                {item.quantity}
-              </div>
-            </div>
+            <ShoppingItemRow key={item.id} item={item} onToggle={onToggleItem} onRemove={onRemoveItem} />
           ))}
         </div>
         {adding ? (
