@@ -273,6 +273,9 @@ export function KalenderMobile({
 
       <button
         type="button"
+        disabled
+        aria-disabled="true"
+        title="Kalenderen er skrivebeskyttet"
         style={{
           height: 48,
           display: "flex",
@@ -285,7 +288,8 @@ export function KalenderMobile({
           background: "transparent",
           outline: "1.5px solid #ffffff24",
           outlineOffset: -0.75,
-          cursor: "pointer",
+          cursor: "default",
+          opacity: 0.55,
         }}
       >
         <Plus size={17} color="var(--text-muted)" />
@@ -301,6 +305,18 @@ export function KalenderMobile({
           Ny hendelse
         </span>
       </button>
+      <div
+        style={{
+          fontFamily: "var(--font-body)",
+          fontSize: 12,
+          lineHeight: 1.3,
+          fontWeight: 400,
+          color: "var(--text-muted)",
+          textAlign: "center",
+        }}
+      >
+        Kalenderen er skrivebeskyttet
+      </div>
     </div>
   );
 }
