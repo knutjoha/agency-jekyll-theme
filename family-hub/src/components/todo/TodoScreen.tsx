@@ -12,10 +12,10 @@ export function TodoScreen({
   ...hallway
 }: HallwayData & { lanes: TodoLane[]; persisted: boolean }) {
   return (
-    <HallwayPage {...hallway} mobile={(clock, weather) => <TodoMobile clock={clock} weather={weather} lanes={lanes} persisted={persisted} />}>
+    <HallwayPage {...hallway} mobile={(clock, weather) => <TodoMobile clock={clock} weather={weather} lanes={lanes} persisted={persisted} snapshot={hallway.snapshot} />}>
       {() => (
         <div style={{ flex: 1, minHeight: 0, display: "flex", width: "100%", minWidth: 0, overflow: "hidden" }}>
-          <TodoBoard lanes={lanes} persisted={persisted} />
+          <TodoBoard lanes={lanes} persisted={persisted} snapshot={hallway.snapshot} />
         </div>
       )}
     </HallwayPage>

@@ -30,9 +30,17 @@ function matches(task: TodoTask, filter: TodoFilter): boolean {
   return true;
 }
 
-export function TodoBoard({ lanes: initialLanes, persisted }: { lanes: TodoLane[]; persisted: boolean }) {
+export function TodoBoard({ lanes: initialLanes, persisted, snapshot = false }: { lanes: TodoLane[]; persisted: boolean; snapshot?: boolean }) {
   const [filter, setFilter] = useState<TodoFilter>("alle");
-  const actions = useTodoActions(initialLanes, persisted);
+  const actions = useTodoActions(
+    snapshot
+      ? initialLanes
+      : initialLanes.map((lane) => ({
+          ...lane,
+          tasks: lane.tasks.map((task) => ({ ...task, editing: false })),
+        })),
+    persisted,
+  );
   const { lanes, drafts, pickerId, removed, today } = actions;
   const tasks = lanes.flatMap((lane) => lane.tasks);
   const openCount = tasks.filter((task) => !task.done).length;

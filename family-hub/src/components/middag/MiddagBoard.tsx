@@ -31,6 +31,7 @@ function cloneDays(days: MenuDay[]): MenuDay[] {
 
 export function MiddagBoard({
   clock,
+  snapshot = false,
   week,
   period,
   days,
@@ -49,6 +50,7 @@ export function MiddagBoard({
   onPlanDay,
 }: {
   clock: OsloNow;
+  snapshot?: boolean;
   week: string;
   period: string;
   days: MenuDay[];
@@ -67,16 +69,16 @@ export function MiddagBoard({
   onPlanDay: (dayId: string) => void;
 }) {
   const [lift, setLift] = useState<Lift | null>(() =>
-    menuPersisted
-      ? null
-      : {
+    snapshot && !menuPersisted
+      ? {
           meal: { ...stagedDrag.meal, ingredients: stagedDrag.meal.ingredients.map((item) => ({ ...item })) },
           fromDayId: stagedDrag.fromDayId,
           targetDayId: stagedDrag.targetDayId,
           live: false,
           left: STAGED_LEFT,
           top: STAGED_TOP,
-        },
+        }
+      : null,
   );
   const [adding, setAdding] = useState(false);
   const [draftItem, setDraftItem] = useState("");

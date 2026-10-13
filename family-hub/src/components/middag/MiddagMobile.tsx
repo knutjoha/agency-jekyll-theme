@@ -43,6 +43,7 @@ function dayName(day: MenuDay, today: boolean): string {
 export function MiddagMobile({
   clock,
   weather,
+  snapshot = false,
   week,
   period,
   days,
@@ -63,6 +64,7 @@ export function MiddagMobile({
 }: {
   clock: OsloNow;
   weather: WeatherView;
+  snapshot?: boolean;
   week: string;
   period: string;
   days: MenuDay[];
@@ -83,16 +85,16 @@ export function MiddagMobile({
 }) {
   const [view, setView] = useState<View>("meny");
   const [lift, setLift] = useState<Lift | null>(() =>
-    menuPersisted
-      ? null
-      : {
+    snapshot && !menuPersisted
+      ? {
           meal: { ...stagedDrag.meal, ingredients: stagedDrag.meal.ingredients.map((item) => ({ ...item })) },
           fromDayId: stagedDrag.fromDayId,
           targetDayId: stagedDrag.targetDayId,
           live: false,
           left: STAGED_LEFT,
           top: STAGED_TOP,
-        },
+        }
+      : null,
   );
   const [adding, setAdding] = useState(false);
   const [draftItem, setDraftItem] = useState("");
