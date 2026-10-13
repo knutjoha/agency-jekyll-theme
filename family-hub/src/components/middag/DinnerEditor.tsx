@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { addIsoDays } from "@/lib/calendar-view";
 import type { OsloNow } from "@/lib/oslo";
@@ -74,6 +74,8 @@ export function DinnerEditor({
   onClose: () => void;
   onSave: () => void;
 }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -81,6 +83,29 @@ export function DinnerEditor({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
+
+  useEffect(() => {
+    if (variant !== "dialog") return;
+    const root = dialogRef.current;
+    if (!root) return;
+    const selector = "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])";
+    function trap(event: KeyboardEvent) {
+      if (event.key !== "Tab" || !root) return;
+      const nodes = [...root.querySelectorAll<HTMLElement>(selector)].filter((node) => !node.hasAttribute("disabled"));
+      if (nodes.length === 0) return;
+      const first = nodes[0];
+      const last = nodes[nodes.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    root.addEventListener("keydown", trap);
+    return () => root.removeEventListener("keydown", trap);
+  }, [variant, draft.ingredients.length]);
 
   const fields = (
     <form
@@ -224,6 +249,7 @@ export function DinnerEditor({
 
   return (
     <div
+      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
@@ -236,9 +262,11 @@ export function DinnerEditor({
       }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`dinner-editor-title-${variant}`}
+        onClick={(event) => event.stopPropagation()}
         style={{
           width: 480,
           maxWidth: "100%",
