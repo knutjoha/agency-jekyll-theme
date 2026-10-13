@@ -263,6 +263,18 @@ export function TodoMobile({
         </button>
       )}
 
+      {editingTask || drafting ? (
+        <div
+          aria-hidden
+          data-edit-spacer="true"
+          style={{
+            height: "calc(100dvh - env(safe-area-inset-bottom, 0px) - 72px)",
+            flexShrink: 0,
+            pointerEvents: "none",
+          }}
+        />
+      ) : null}
+
       {removed ? (
         <div
           role="status"
@@ -451,6 +463,10 @@ function SwipeRow({
 const EDIT_TOP_GAP = 12;
 
 function scrollingAncestor(node: HTMLElement): HTMLElement {
+  if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+    const main = document.querySelector<HTMLElement>(".shell-main");
+    if (main) return main;
+  }
   let parent = node.parentElement;
   while (parent && parent !== document.documentElement) {
     const overflow = getComputedStyle(parent).overflowY;
