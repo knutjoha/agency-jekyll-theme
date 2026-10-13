@@ -44,7 +44,14 @@ export function TodoEditor({
     <div style={{ display: "flex", flexDirection: "column", gap: 14, width: "100%" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
         <FieldLabel>Oppgave</FieldLabel>
-        <TitleInput value={title} onChange={onTitle} onSave={onSave} fontSize={titleSize} autoFocus={autoFocus} />
+        <TitleInput
+          value={title}
+          onChange={onTitle}
+          onSave={onSave}
+          fontSize={titleSize}
+          autoFocus={autoFocus}
+          preventScroll={phone}
+        />
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%" }}>
         <FieldLabel>Frist</FieldLabel>
@@ -119,19 +126,21 @@ function TitleInput({
   onSave,
   fontSize,
   autoFocus,
+  preventScroll,
 }: {
   value: string;
   onChange: (value: string) => void;
   onSave: () => void;
   fontSize: number;
   autoFocus?: boolean;
+  preventScroll?: boolean;
 }) {
   const fieldRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
     const node = fieldRef.current;
     if (!node || !autoFocus || node.getClientRects().length === 0) return;
-    node.focus();
-  }, [autoFocus]);
+    node.focus({ preventScroll: Boolean(preventScroll) });
+  }, [autoFocus, preventScroll]);
   return (
     <div
       style={{
