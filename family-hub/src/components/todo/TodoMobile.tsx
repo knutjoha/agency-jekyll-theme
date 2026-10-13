@@ -35,11 +35,13 @@ export function TodoMobile({
   weather,
   lanes: initialLanes,
   persisted,
+  snapshot = false,
 }: {
   clock: OsloNow;
   weather: WeatherView;
   lanes: TodoLane[];
   persisted: boolean;
+  snapshot?: boolean;
 }) {
   const [selectedId, setSelectedId] = useState<PersonId>("knut");
   const actions = useTodoActions(
@@ -47,7 +49,7 @@ export function TodoMobile({
       ...lane,
       tasks: lane.tasks.map((task) => ({
         ...task,
-        editing: persisted ? false : task.id === PHONE_EDIT_ID,
+        editing: persisted ? false : snapshot && task.id === PHONE_EDIT_ID,
       })),
     })),
     persisted,

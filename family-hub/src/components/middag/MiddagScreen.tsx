@@ -322,6 +322,7 @@ export function MiddagScreen({
 
   const editorDay = editor ? days.find((day) => day.id === editor.dayId) : null;
   const shared = {
+    snapshot: hallway.snapshot,
     week,
     period,
     days,
