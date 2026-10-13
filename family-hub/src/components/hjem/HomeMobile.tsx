@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
-import { soon } from "@/data/fixture";
 import type { CalendarEvent, Person, SoonItem, WeatherView } from "@/data/types";
+import { SOON_EMPTY } from "@/lib/calendar-view";
 import type { OsloNow } from "@/lib/oslo";
-
-const previewDates = ["05.10", "06.10", "18.10"];
 
 function eventLine(events: CalendarEvent[]): string {
   return events
@@ -16,10 +14,7 @@ function eventLine(events: CalendarEvent[]): string {
 
 function previewSoon(items: SoonItem[], expanded: boolean): SoonItem[] {
   if (expanded) return items;
-  const picked = previewDates
-    .map((date) => items.find((item) => item.date === date))
-    .filter((item): item is SoonItem => Boolean(item));
-  return picked.length > 0 ? picked : items.slice(0, 3);
+  return items.slice(0, 3);
 }
 
 function PersonCard({ person }: { person: Person }) {
@@ -116,10 +111,12 @@ export function HomeMobile({
   clock,
   weather,
   people,
+  soon,
 }: {
   clock: OsloNow;
   weather: WeatherView;
   people: Person[];
+  soon: SoonItem[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const rows = previewSoon(soon, expanded);
@@ -199,28 +196,43 @@ export function HomeMobile({
           >
             Snart
           </div>
-          <button
-            type="button"
-            aria-expanded={expanded}
-            onClick={() => setExpanded((open) => !open)}
+          {soon.length > 3 ? (
+            <button
+              type="button"
+              aria-expanded={expanded}
+              onClick={() => setExpanded((open) => !open)}
+              style={{
+                border: 0,
+                background: "transparent",
+                padding: 0,
+                fontFamily: "var(--font-body)",
+                fontSize: 13,
+                lineHeight: 1,
+                fontWeight: 400,
+                color: "var(--accent)",
+                cursor: "pointer",
+              }}
+            >
+              {expanded ? "vis færre" : "se alle"}
+            </button>
+          ) : null}
+        </div>
+        {rows.length === 0 ? (
+          <div
             style={{
-              border: 0,
-              background: "transparent",
-              padding: 0,
               fontFamily: "var(--font-body)",
-              fontSize: 13,
-              lineHeight: 1,
+              fontSize: 15,
+              lineHeight: 1.3,
               fontWeight: 400,
-              color: "var(--accent)",
-              cursor: "pointer",
+              color: "var(--text-muted)",
             }}
           >
-            {expanded ? "vis færre" : "se alle"}
-          </button>
-        </div>
-        {rows.map((item) => (
+            {SOON_EMPTY}
+          </div>
+        ) : (
+          rows.map((item, index) => (
           <div
-            key={`${item.date}-${item.title}`}
+            key={`${item.date}-${item.title}-${index}`}
             style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 14 }}
           >
             <div
@@ -270,7 +282,8 @@ export function HomeMobile({
               </div>
             </div>
           </div>
-        ))}
+          ))
+        )}
       </section>
     </div>
   );

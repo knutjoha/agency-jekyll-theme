@@ -24,7 +24,9 @@ export function useCalendar(
         const response = await fetch(`/api/calendar${query}`);
         if (!response.ok) return;
         const next: unknown = await response.json();
-        if (!cancelled && isCalendarPayload(next)) setCalendar(next);
+        if (!cancelled && isCalendarPayload(next)) {
+          setCalendar({ ...next, soon: next.soon ?? [] });
+        }
       } catch {
         // The server route already falls back. Keep the last payload on a network miss.
       }

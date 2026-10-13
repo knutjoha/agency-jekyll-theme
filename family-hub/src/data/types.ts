@@ -69,6 +69,7 @@ export type CalendarPayload = {
   source: CalendarSource;
   todayPeople: Person[];
   week: CalendarWeek;
+  soon: SoonItem[];
 };
 
 export type TodoFilter = "alle" | "frist" | "fullfort";

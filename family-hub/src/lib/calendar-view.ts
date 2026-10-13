@@ -1,7 +1,19 @@
 import { calendarWeek } from "../data/calendar";
 import { people } from "../data/fixture";
-import type { CalendarEvent, CalendarPayload, CalendarWeek, LaneId, Person, PersonId } from "../data/types";
-import { osloDateKey, osloParts } from "./oslo";
+import type {
+  CalendarEvent,
+  CalendarPayload,
+  CalendarWeek,
+  LaneId,
+  Person,
+  PersonId,
+  SoonItem,
+} from "../data/types";
+import { osloDateKey, osloMidnightUtc, osloParts } from "./oslo";
+
+export const SOON_LIMIT = 10;
+export const SOON_HORIZON_DAYS = 365;
+export const SOON_EMPTY = "Ingen kommende hendelser";
 
 const PERSON_ORDER: PersonId[] = ["amelia", "hedda", "maja", "knut", "ulla"];
 const LIVE_LANES: LaneId[] = [...PERSON_ORDER, "family"];
@@ -81,6 +93,7 @@ export function fixturePayload(): CalendarPayload {
     source: "fixture",
     todayPeople: people,
     week: calendarWeek,
+    soon: [],
   };
 }
 
@@ -98,8 +111,75 @@ export function isCalendarPayload(value: unknown): value is CalendarPayload {
     payload.week.rows.length === lanes.length &&
     payload.week.rows.every(
       (row, index) => row?.personId === lanes[index] && Array.isArray(row.days) && row.days.length === 7,
-    )
+    ) &&
+    (payload.soon === undefined || Array.isArray(payload.soon))
   );
+}
+
+function isoDayDiff(from: string, to: string): number {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  return Math.round((end - start) / 86_400_000);
+}
+
+function dateLabel(iso: string): string {
+  const [, month, day] = iso.split("-");
+  return `${day}.${month}`;
+}
+
+function relativeLabel(days: number): string {
+  if (days <= 0) return "i dag";
+  if (days === 1) return "i morgen";
+  return `om ${days} dager`;
+}
+
+function laneNames(lanes: LaneId[]): string {
+  return lanes.map((id) => calendarLane(id).name).join(" og ");
+}
+
+function soonMeta(lanes: LaneId[], time: string | null, days: number): string {
+  return [laneNames(lanes), time, relativeLabel(days)].filter(Boolean).join(" · ");
+}
+
+export function upcomingSoon(events: CalendarEventInput[], now: Date): SoonItem[] {
+  const today = osloDateKey(now);
+  const ranked: { sort: number; title: string; item: SoonItem }[] = [];
+
+  for (const event of events) {
+    const placed = placeEvent(event);
+    if (!placed) continue;
+
+    let dateIso: string;
+    let sort: number;
+    let time: string | null;
+
+    if (placed.kind === "timed") {
+      if (placed.start.getTime() < now.getTime()) continue;
+      dateIso = osloDateKey(placed.start);
+      sort = placed.start.getTime();
+      time = timeLabel(placed, dateIso);
+    } else {
+      if (placed.startDate < today) continue;
+      dateIso = placed.startDate;
+      sort = osloMidnightUtc(placed.startDate).getTime();
+      time = null;
+    }
+
+    const days = isoDayDiff(today, dateIso);
+    ranked.push({
+      sort,
+      title: placed.title,
+      item: {
+        date: dateLabel(dateIso),
+        dotToken: calendarLane(placed.lanes[0] ?? "family").colorToken,
+        title: placed.title,
+        meta: soonMeta(placed.lanes, time, days),
+      },
+    });
+  }
+
+  ranked.sort((a, b) => a.sort - b.sort || a.title.localeCompare(b.title, "nb"));
+  return ranked.slice(0, SOON_LIMIT).map((entry) => entry.item);
 }
 
 export function calendarLane(id: LaneId): Person {
@@ -212,6 +292,7 @@ export function buildLivePayload(
   todayEvents: CalendarEventInput[],
   now: Date,
   weekStart: string,
+  upcomingEvents: CalendarEventInput[] = [],
 ): CalendarPayload {
   const today = osloDateKey(now);
   const details = new Map(calendarWeek.rows.map((row) => [row.personId, row.detail]));
@@ -247,5 +328,6 @@ export function buildLivePayload(
       },
     ],
     week,
+    soon: upcomingSoon(upcomingEvents, now),
   };
 }

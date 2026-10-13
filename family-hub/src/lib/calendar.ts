@@ -4,6 +4,7 @@ import {
   fixturePayload,
   mondayOf,
   parseIsoDate,
+  SOON_HORIZON_DAYS,
 } from "@/lib/calendar-view";
 import { listTeamVidveiEvents, readGoogleCredentials } from "@/lib/google-calendar";
 import type { CalendarPayload } from "@/data/types";
@@ -28,20 +29,26 @@ export async function getCalendar(options?: { week?: string | null; now?: Date }
   const weekStart = requested ? mondayOf(requested) : todayWeek;
 
   try {
-    const weekEvents = await listTeamVidveiEvents(
-      credentials,
-      osloMidnightUtc(weekStart),
-      osloMidnightUtc(addIsoDays(weekStart, 7)),
-    );
-    const todayEvents =
-      weekStart === todayWeek
-        ? weekEvents
-        : await listTeamVidveiEvents(
+    const today = osloDateKey(now);
+    const soonEnd = addIsoDays(today, SOON_HORIZON_DAYS);
+    const needTodayWeek = weekStart !== todayWeek;
+    const [weekEvents, upcomingEvents, extraToday] = await Promise.all([
+      listTeamVidveiEvents(
+        credentials,
+        osloMidnightUtc(weekStart),
+        osloMidnightUtc(addIsoDays(weekStart, 7)),
+      ),
+      listTeamVidveiEvents(credentials, osloMidnightUtc(today), osloMidnightUtc(soonEnd)),
+      needTodayWeek
+        ? listTeamVidveiEvents(
             credentials,
             osloMidnightUtc(todayWeek),
             osloMidnightUtc(addIsoDays(todayWeek, 7)),
-          );
-    return buildLivePayload(weekEvents, todayEvents, now, weekStart);
+          )
+        : Promise.resolve(null),
+    ]);
+    const todayEvents = extraToday ?? weekEvents;
+    return buildLivePayload(weekEvents, todayEvents, now, weekStart, upcomingEvents);
   } catch (error) {
     logCalendarFailure(error);
     return fixturePayload();

@@ -1,4 +1,4 @@
-import type { Dinner, Person, SoonItem, WeatherView } from "./types";
+import type { Dinner, Person, WeatherView } from "./types";
 
 export const people: Person[] = [
   {
@@ -61,45 +61,6 @@ export const dinner: Dinner = {
   dish: "Ovnsbakt laks med poteter",
   shoppingCount: 6,
 };
-
-export const soon: SoonItem[] = [
-  {
-    date: "05.10",
-    dotToken: "--p-knut",
-    title: "Høstferie starter",
-    meta: "Begge skoler · om 2 dager",
-  },
-  {
-    date: "06.10",
-    dotToken: "--p-ulla",
-    title: "Samtykke leirskole",
-    meta: "Maja · Jar skole · svar innen 3 dager",
-  },
-  {
-    date: "09.10",
-    dotToken: "--p-ulla",
-    title: "Foreldremøte 8B",
-    meta: "Hedda · påmelding mangler",
-  },
-  {
-    date: "18.10",
-    dotToken: "--p-maja",
-    title: "Amelia og Hedda fyller 14",
-    meta: "om 15 dager · gave ikke kjøpt",
-  },
-  {
-    date: "31.10",
-    dotToken: "--accent",
-    title: "EU-kontroll Tesla Model X",
-    meta: "Pappa · om 28 dager",
-  },
-  {
-    date: "12.11",
-    dotToken: "--accent",
-    title: "Pass utløper",
-    meta: "Maja · Pappa · om 40 dager",
-  },
-];
 
 export const ATTRIBUTION = "Stabekk · Yr / Meteorologisk institutt og NRK";
 
