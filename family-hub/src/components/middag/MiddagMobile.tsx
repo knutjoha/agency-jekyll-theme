@@ -389,7 +389,7 @@ export function MiddagMobile({
 
 function ViewSwitch({ view, onChange }: { view: View; onChange: (view: View) => void }) {
   return (
-    <div style={{ height: 42, boxSizing: "border-box", display: "flex", flexDirection: "row", gap: 4, padding: 4, borderRadius: 10, background: "var(--tile)" }}>
+    <div style={{ height: 48, boxSizing: "border-box", display: "flex", flexDirection: "row", gap: 4, padding: 4, borderRadius: 10, background: "var(--tile)" }}>
       <SwitchButton label="Ukemeny" pressed={view === "meny"} onClick={() => onChange("meny")} />
       <SwitchButton label="Handleliste" pressed={view === "liste"} onClick={() => onChange("liste")} />
     </div>
@@ -444,7 +444,7 @@ function DropSlot({ label }: { label: string }) {
 
 function Grip({ label, color, onPointerDown }: { label: string; color: string; onPointerDown: (event: ReactPointerEvent) => void }) {
   return (
-    <button type="button" aria-label={label} onPointerDown={onPointerDown} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 15, height: 15, padding: 0, border: "none", background: "transparent", cursor: "grab", flexShrink: 0 }}>
+    <button type="button" aria-label={label} onPointerDown={onPointerDown} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, padding: 0, border: "none", background: "transparent", cursor: "grab", flexShrink: 0 }}>
       <GripVertical size={15} color={color} />
     </button>
   );
@@ -478,7 +478,7 @@ function DayRefresh({
       aria-busy={busy || undefined}
       disabled={disabled}
       onClick={onClick}
-      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, padding: 0, border: "none", background: "transparent", cursor: disabled ? "default" : "pointer", flexShrink: 0, opacity: disabled && !busy ? 0.45 : 1 }}
+      style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, padding: 0, border: "none", background: "transparent", cursor: disabled ? "default" : "pointer", flexShrink: 0, opacity: disabled && !busy ? 0.45 : 1 }}
     >
       <RefreshCw size={14} color="var(--text-muted)" className={busy ? "dinner-spin" : undefined} />
     </button>
@@ -493,7 +493,7 @@ function MealRow({ meal, onOpen, refresh }: { meal: Meal; onOpen: () => void; re
         <div style={phoneDetail}>{detailFor(meal)}</div>
       </button>
       {refresh}
-      <button type="button" aria-label={`Rediger ${meal.title}`} onClick={onOpen} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, padding: 0, border: "none", background: "transparent", cursor: "pointer", flexShrink: 0 }}>
+      <button type="button" aria-label={`Rediger ${meal.title}`} onClick={onOpen} style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, padding: 0, border: "none", background: "transparent", cursor: "pointer", flexShrink: 0 }}>
         <Pencil size={14} color="var(--text-muted)" />
       </button>
     </>
@@ -530,8 +530,8 @@ function ShoppingList({
               aria-label={item.done ? `Merk ${item.name} som ikke kjøpt` : `Kjøp ${item.name}`}
               onClick={() => onToggle(item.id)}
               style={{
-                width: 20,
-                height: 20,
+                width: 44,
+                height: 44,
                 flexShrink: 0,
                 display: "flex",
                 alignItems: "center",

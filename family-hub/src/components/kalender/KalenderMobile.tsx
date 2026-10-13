@@ -130,7 +130,7 @@ export function KalenderMobile({
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 3,
-                padding: "9px 0",
+                padding: "12px 0",
                 border: 0,
                 borderRadius: "var(--r-nested)",
                 background: selected ? "var(--tile-2)" : "var(--tile)",

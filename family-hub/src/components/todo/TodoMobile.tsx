@@ -656,8 +656,8 @@ function CheckBox({ done, label, onToggle }: { done: boolean; label: string; onT
         onToggle();
       }}
       style={{
-        width: 26,
-        height: 26,
+        width: 44,
+        height: 44,
         flexShrink: 0,
         display: "flex",
         alignItems: "center",

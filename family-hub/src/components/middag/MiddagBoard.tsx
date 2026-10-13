@@ -387,8 +387,8 @@ export function MiddagBoard({
                 aria-label={item.done ? `Merk ${item.name} som ikke kjøpt` : `Kjøp ${item.name}`}
                 onClick={() => onToggleItem(item.id)}
                 style={{
-                  width: 20,
-                  height: 20,
+                  width: 44,
+                  height: 44,
                   flexShrink: 0,
                   display: "flex",
                   alignItems: "center",
@@ -598,6 +598,8 @@ const emptyButton = {
 };
 
 const gripButton = {
+  width: 44,
+  height: 44,
   display: "flex",
   alignItems: "center",
   justifyContent: "center",

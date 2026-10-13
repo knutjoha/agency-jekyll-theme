@@ -94,15 +94,17 @@ body {
 .tab-bar-items {
   display: flex;
   flex-direction: row;
-  padding-top: 9px;
-  padding-bottom: 10px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .tab-bar-item {
   flex: 1;
+  min-height: 44px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   text-decoration: none;
   font-family: var(--font-body);
