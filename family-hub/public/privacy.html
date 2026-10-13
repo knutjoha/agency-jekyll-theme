@@ -16,6 +16,7 @@
       --accent: #ff9f43;
     }
     * { box-sizing: border-box; }
+    html, body { overflow-x: hidden; }
     body {
       margin: 0;
       background: var(--bg);
@@ -26,6 +27,7 @@
       max-width: 40rem;
       margin: 0 auto;
       padding: 2rem 1.25rem 4rem;
+      overflow-wrap: anywhere;
     }
     nav {
       margin: 0 0 1rem;
@@ -41,9 +43,10 @@
     }
     article + article { margin-top: 1.5rem; }
     h1 {
-      font-size: 1.7rem;
+      font-size: clamp(1.25rem, 5.6vw, 1.7rem);
       line-height: 1.2;
       margin: 0 0 0.35rem;
+      overflow-wrap: anywhere;
     }
     h2 {
       font-size: 1.12rem;
