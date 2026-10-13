@@ -1,11 +1,11 @@
 import { Suspense, type ReactNode } from "react";
 import { MobileTabBar } from "@/components/shell/MobileTabBar";
-import { NavOrbsOverlay, NavOrbsRoot } from "@/components/shell/NavOrbs";
+import { RouteLoadingOverlay, RouteLoadingRoot } from "@/components/shell/RouteLoading";
 import { NavRail } from "@/components/shell/NavRail";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
-    <NavOrbsRoot>
+    <RouteLoadingRoot>
       <div className="shell">
         <Suspense
           fallback={
@@ -20,12 +20,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Suspense>
         <div className="shell-main">
           {children}
-          <NavOrbsOverlay />
+          <RouteLoadingOverlay />
         </div>
         <Suspense fallback={<div className="tab-bar" data-region="tab-bar" />}>
           <MobileTabBar />
         </Suspense>
       </div>
-    </NavOrbsRoot>
+    </RouteLoadingRoot>
   );
 }

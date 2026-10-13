@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { NavPendingBeacon } from "@/components/shell/NavOrbs";
+import { NavPendingBeacon } from "@/components/shell/RouteLoading";
 import { isNavActive, navHref, navItems } from "@/components/shell/navItems";
 
 export function MobileTabBar() {
