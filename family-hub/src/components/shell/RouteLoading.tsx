@@ -12,7 +12,6 @@ import {
 } from "react";
 import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { ThinkingOrb } from "thinking-orbs";
 import { RouteSkeleton } from "@/components/shell/RouteSkeleton";
 import { appPathFromHref, isAppPath, type AppPath } from "@/components/shell/navPaths";
 
@@ -20,14 +19,14 @@ const FADE_MS = 160;
 const MIN_MS = 180;
 const MIN_REDUCE_MS = 80;
 
-type NavOrbsApi = {
+type RouteLoadingApi = {
   visible: boolean;
   route: AppPath;
   show: (path: AppPath) => void;
   markPending: (path: AppPath, pending: boolean) => void;
 };
 
-const NavOrbsContext = createContext<NavOrbsApi | null>(null);
+const RouteLoadingContext = createContext<RouteLoadingApi | null>(null);
 
 function prefersReduce(): boolean {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -37,7 +36,7 @@ function currentAppPath(): AppPath | null {
   return appPathFromHref(window.location.href, window.location.origin);
 }
 
-export function NavOrbsRoot({ children }: { children: ReactNode }) {
+export function RouteLoadingRoot({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [route, setRoute] = useState<AppPath>(isAppPath(pathname) ? pathname : "/");
@@ -131,12 +130,12 @@ export function NavOrbsRoot({ children }: { children: ReactNode }) {
     [visible, route, show, markPending],
   );
 
-  return <NavOrbsContext.Provider value={api}>{children}</NavOrbsContext.Provider>;
+  return <RouteLoadingContext.Provider value={api}>{children}</RouteLoadingContext.Provider>;
 }
 
 export function NavPendingBeacon({ href }: { href: string }) {
   const { pending } = useLinkStatus();
-  const api = useContext(NavOrbsContext);
+  const api = useContext(RouteLoadingContext);
   const path = appPathFromHref(href);
 
   useEffect(() => {
@@ -148,32 +147,22 @@ export function NavPendingBeacon({ href }: { href: string }) {
   return null;
 }
 
-export function NavOrbsOverlay() {
-  const api = useContext(NavOrbsContext);
+export function RouteLoadingOverlay() {
+  const api = useContext(RouteLoadingContext);
   if (!api) return null;
   const { visible, route } = api;
 
   return (
     <>
       <div
-        className="nav-orbs"
-        data-region="nav-orbs"
+        className="route-loading"
+        data-region="route-loading"
         data-route={route}
         data-visible={visible ? "true" : "false"}
         aria-hidden="true"
         style={{ transitionDuration: `${FADE_MS}ms` }}
       >
         <RouteSkeleton route={route} />
-        <div className="nav-orbs-orb">
-          <ThinkingOrb
-            state="working"
-            size={64}
-            theme="dark"
-            speed={1.15}
-            paused={!visible}
-            aria-hidden="true"
-          />
-        </div>
       </div>
       <div className="sr-only" role="status" aria-live="polite">
         {visible ? "Laster siden" : ""}

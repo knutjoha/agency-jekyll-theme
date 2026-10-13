@@ -176,7 +176,7 @@ body {
   border: 0;
 }
 
-.nav-orbs {
+.route-loading {
   position: absolute;
   inset: 0;
   z-index: 20;
@@ -188,25 +188,14 @@ body {
   transition: opacity 160ms var(--ease-out), visibility 160ms var(--ease-out);
 }
 
-.nav-orbs[data-visible="true"] {
+.route-loading[data-visible="true"] {
   opacity: 1;
   visibility: visible;
   transition: none;
 }
 
-.nav-orbs:not([data-visible="true"]) .sk-bone {
+.route-loading:not([data-visible="true"]) .sk-bone {
   animation: none;
-}
-
-.nav-orbs-orb {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at center, rgb(13 14 16 / 0.52) 0%, transparent 58%);
-  pointer-events: none;
 }
 
 .route-skeleton {
@@ -454,7 +443,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .nav-orbs {
+  .route-loading {
     transition-duration: 120ms;
   }
 
