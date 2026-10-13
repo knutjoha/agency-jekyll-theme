@@ -14,6 +14,7 @@ import {
   parseDinnerDaySave,
   parseDinnerDays,
   parseShoppingCreate,
+  parseShoppingDelete,
   parseShoppingPatch,
   parseStartsOn,
   parseTodoCreate,
@@ -381,6 +382,20 @@ export async function updateShoppingItem(input: unknown): Promise<WriteResult> {
     .select("id");
   if (error || !data?.length) {
     if (error) logFailure("shopping update", error);
+    return { persisted: false };
+  }
+  return { persisted: true };
+}
+
+export async function deleteShoppingItem(input: unknown): Promise<WriteResult> {
+  const parsed = parseShoppingDelete(input);
+  if (!parsed.ok) return { persisted: false };
+  const supabase = getSupabase();
+  if (!supabase) return { persisted: false };
+
+  const { data, error } = await supabase.from("shopping_items").delete().eq("id", parsed.value.id).select("id");
+  if (error || !data?.length) {
+    if (error) logFailure("shopping delete", error);
     return { persisted: false };
   }
   return { persisted: true };

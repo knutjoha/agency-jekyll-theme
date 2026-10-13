@@ -61,7 +61,7 @@ export const dinnerMenu: DinnerMenu = {
     {
       id: "ukemeny",
       label: "Fra ukemenyen",
-      items: [],
+      items: [{ id: "menu-ingefaer", name: "Ingefær", quantity: "1 stk" }],
     },
   ],
 };

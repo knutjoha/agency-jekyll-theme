@@ -227,6 +227,33 @@ export function MiddagScreen({
     });
   }
 
+  function removeItem(id: string) {
+    const at = weekRef.current;
+    const aisle = aisles.find((group) => group.items.some((row) => row.id === id));
+    const item = aisle?.items.find((row) => row.id === id);
+    if (!aisle || !item) return;
+    const index = aisle.items.findIndex((row) => row.id === id);
+    setAisles((current) =>
+      current.map((entry) => ({
+        ...entry,
+        items: entry.items.filter((row) => row.id !== id),
+      })),
+    );
+    if (!shoppingPersisted) return;
+    void writeJson("/api/shopping", "DELETE", { id }).then((ok) => {
+      if (weekRef.current !== at) return;
+      if (ok) return;
+      setAisles((current) =>
+        current.map((entry) => {
+          if (entry.id !== aisle.id || entry.items.some((row) => row.id === id)) return entry;
+          const items = [...entry.items];
+          items.splice(Math.min(index, items.length), 0, item);
+          return { ...entry, items };
+        }),
+      );
+    });
+  }
+
   async function saveEditor() {
     const current = editorRef.current;
     if (!current || current.saving) return;
@@ -343,6 +370,7 @@ export function MiddagScreen({
     onCommitDays: commitDays,
     onToggleItem: toggleItem,
     onAddItem: addItem,
+    onRemoveItem: removeItem,
     onPlanWeek: planWeek,
     onPlanDay: planDay,
   };

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { Check, ChevronRight, GripVertical, Move, Pencil, Plus, RefreshCw, ShoppingBasket } from "lucide-react";
+import { ChevronRight, GripVertical, Move, Pencil, Plus, RefreshCw, ShoppingBasket } from "lucide-react";
 import { WeekButtons, dayIsToday } from "@/components/middag/DinnerEditor";
+import { ShoppingItemRow } from "@/components/middag/ShoppingItemRow";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { stagedDrag } from "@/data/middag";
 import type { GroceryAisle, Meal, MenuDay, WeatherView } from "@/data/types";
@@ -58,6 +59,7 @@ export function MiddagMobile({
   onCommitDays,
   onToggleItem,
   onAddItem,
+  onRemoveItem,
   onPlanWeek,
   onPlanDay,
   editor,
@@ -79,6 +81,7 @@ export function MiddagMobile({
   onCommitDays: (days: MenuDay[]) => void;
   onToggleItem: (id: string) => void;
   onAddItem: (name: string) => void;
+  onRemoveItem: (id: string) => void;
   onPlanWeek: () => void;
   onPlanDay: (dayId: string) => void;
   editor: ReactNode;
@@ -376,6 +379,7 @@ export function MiddagMobile({
           adding={adding}
           draftItem={draftItem}
           onToggle={onToggleItem}
+          onRemove={onRemoveItem}
           onDraft={setDraftItem}
           onAdd={() => setAdding(true)}
           onCancel={() => {
@@ -507,6 +511,7 @@ function ShoppingList({
   adding,
   draftItem,
   onToggle,
+  onRemove,
   onDraft,
   onAdd,
   onCancel,
@@ -516,6 +521,7 @@ function ShoppingList({
   adding: boolean;
   draftItem: string;
   onToggle: (id: string) => void;
+  onRemove: (id: string) => void;
   onDraft: (value: string) => void;
   onAdd: () => void;
   onCancel: () => void;
@@ -525,33 +531,7 @@ function ShoppingList({
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {aisles.flatMap((aisle) => aisle.items).map((item) => (
-          <div key={item.id} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 11 }}>
-            <button
-              type="button"
-              aria-pressed={Boolean(item.done)}
-              aria-label={item.done ? `Merk ${item.name} som ikke kjøpt` : `Kjøp ${item.name}`}
-              onClick={() => onToggle(item.id)}
-              style={{
-                width: 44,
-                height: 44,
-                flexShrink: 0,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: 0,
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-                background: item.done ? "var(--ok)" : "transparent",
-                outline: item.done ? "none" : "1.5px solid var(--text-muted)",
-                outlineOffset: item.done ? undefined : -0.75,
-              }}
-            >
-              {item.done ? <Check size={13} color="var(--ink)" strokeWidth={2.5} /> : null}
-            </button>
-            <div style={{ flex: 1, minWidth: 0, fontFamily: "var(--font-body)", fontSize: 14, lineHeight: 1.2, fontWeight: 400, color: item.done ? "var(--text-muted)" : "var(--text)" }}>{item.name}</div>
-            <div style={{ fontFamily: "var(--font-data)", fontSize: 12, lineHeight: 1, fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{item.quantity}</div>
-          </div>
+          <ShoppingItemRow key={item.id} item={item} onToggle={onToggle} onRemove={onRemove} />
         ))}
       </div>
       {adding ? (
