@@ -14,7 +14,22 @@
 | P2 UX / UI / a11y | 16 | listed below |
 | P3 polish | 4 | no PR (see skipped) |
 
-**Fix PRs** (draft, against `gh-pages`) are linked on each issue. This file lives on `audit/qa-audit` so the fix PRs stay small.
+**Fix PRs** (draft, against `gh-pages`):
+
+| PR | Severity | What |
+|---|---|---|
+| [#20](https://github.com/knutjoha/agency-jekyll-theme/pull/20) | — | This audit |
+| [#21](https://github.com/knutjoha/agency-jekyll-theme/pull/21) | P1 | Fluid Hjem layout (A01, A18, A27) |
+| [#22](https://github.com/knutjoha/agency-jekyll-theme/pull/22) | P1 | Fluid Middag board + title ellipsis (A02, A05) |
+| [#23](https://github.com/knutjoha/agency-jekyll-theme/pull/23) | P1 | Todo lanes scroll / tablet (A03, A04, A25) |
+| [#24](https://github.com/knutjoha/agency-jekyll-theme/pull/24) | P2 | Privacy/terms wrap at 320 (A06) |
+| [#25](https://github.com/knutjoha/agency-jekyll-theme/pull/25) | P2 | Fixture drag ghost + open editor only in snapshot (A07, A08) |
+| [#26](https://github.com/knutjoha/agency-jekyll-theme/pull/26) | P2 | Dinner editor validation + dialog a11y (A10, A11) |
+| [#27](https://github.com/knutjoha/agency-jekyll-theme/pull/27) | P2 | Todo undo toast timeout (A13, A14) |
+| [#28](https://github.com/knutjoha/agency-jekyll-theme/pull/28) | P2 | 44 px tap targets (A12) |
+| [#29](https://github.com/knutjoha/agency-jekyll-theme/pull/29) | P2 | Disable dead Ny hendelse (A09) |
+| [#30](https://github.com/knutjoha/agency-jekyll-theme/pull/30) | P2 | Hjem dinner link + pickup tags (A15, A19) |
+| [#31](https://github.com/knutjoha/agency-jekyll-theme/pull/31) | P2 | Kalender chip overflow at 768 (A24) |
 
 **Skipped:** no paid AI planner calls; no writes to the live Supabase project; no changes to `family-hub/supabase/*.sql`, Google Calendar credentials, `/api/calendar` lane parsing, `vercel.json` crons, or the *text* of `privacy.html` / `terms.html`. Data-model findings are recorded, not patched.
 
@@ -109,7 +124,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Tiles scale or wrap; no horizontal clip.
 - **Actual:** Left column is a fixed 786 px and the right column a fixed 400 px (plus 96 px rail and 64 px padding). Content is clipped: dinner / Snart hang off the right, weather hangs off the bottom. `shell-main` is `overflow: hidden`.
 - **Screenshot:** [audit-screenshots/A01-home-1024-clip.webp](audit-screenshots/A01-home-1024-clip.webp), [A01-home-768-clip.webp](audit-screenshots/A01-home-768-clip.webp)
-- **PR:** _pending_
+- **PR:** [#21](https://github.com/knutjoha/agency-jekyll-theme/pull/21)
 
 ### A02 — Middag board clips on tablet
 
@@ -120,7 +135,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Ukemeny and handleliste share the width; both usable.
 - **Actual:** Ukemeny is a fixed 820 px column. Handleliste is shoved off-canvas. At 768 the week title / chevrons / «Dra for å bytte dag» collide.
 - **Screenshot:** [audit-screenshots/A02-middag-768-clip.webp](audit-screenshots/A02-middag-768-clip.webp), [A02-middag-1024-clip.webp](audit-screenshots/A02-middag-1024-clip.webp)
-- **PR:** _pending_
+- **PR:** [#22](https://github.com/knutjoha/agency-jekyll-theme/pull/22)
 
 ### A03 — Todo lanes unreadable at 768
 
@@ -131,7 +146,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Five lanes remain readable, or the board scrolls horizontally on purpose.
 - **Actual:** Names, titles and editor actions wrap one letter per line. «Lagre» overflows the lane. `MAIN-HCLIP 694>672`.
 - **Screenshot:** [audit-screenshots/A03-todo-768-overflow.webp](audit-screenshots/A03-todo-768-overflow.webp)
-- **PR:** _pending_
+- **PR:** [#23](https://github.com/knutjoha/agency-jekyll-theme/pull/23)
 
 ### A04 — Todo lanes do not scroll; extra tasks are unreachable
 
@@ -142,7 +157,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** The lane (or the board) scrolls so «Ny oppgave» and later cards stay reachable.
 - **Actual:** Lane `overflow: visible`, `shell-main` `overflow: hidden`. Button bottom sat at y=1089 in a 1024-tall window. Tasks below the fold cannot be opened.
 - **Screenshot:** [audit-screenshots/A04-todo-clipped-tasks.webp](audit-screenshots/A04-todo-clipped-tasks.webp)
-- **PR:** _pending_
+- **PR:** [#23](https://github.com/knutjoha/agency-jekyll-theme/pull/23)
 
 ### A05 — Long dinner titles overflow the meal card
 
@@ -153,7 +168,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Title truncates or wraps inside the card.
 - **Actual:** `whiteSpace: nowrap` with no overflow hidden. Text paints over the handleliste.
 - **Screenshot:** [audit-screenshots/A05-middag-long-dish.webp](audit-screenshots/A05-middag-long-dish.webp)
-- **PR:** _pending_
+- **PR:** [#22](https://github.com/knutjoha/agency-jekyll-theme/pull/22)
 
 ### A06 — Personvernerklæring heading overflows at 320
 
@@ -164,7 +179,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** No horizontal scroll; heading wraps.
 - **Actual:** `h1` «Personvernerklæring for Family Hub» does not wrap (`scrollWidth` 290 in a 235 px article). `documentElement.scrollWidth` 332.
 - **Screenshot:** [audit-screenshots/A06-privacy-320.webp](audit-screenshots/A06-privacy-320.webp)
-- **PR:** _pending_
+- **PR:** [#24](https://github.com/knutjoha/agency-jekyll-theme/pull/24)
 
 ### A07 — Fixture / snapshot leaves a stuck drag ghost on Middag
 
@@ -175,7 +190,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** A clean week, or a staged drag only inside an explicit snapshot for visual tests.
 - **Actual:** `MiddagBoard` / `MiddagMobile` seed `lift` with `stagedDrag` whenever `!menuPersisted`. Taco floats over onsdag/fredag and looks like a broken drag. At 320 the 300 px floater at `left: 40` overflows (`article right=356`).
 - **Screenshot:** [audit-screenshots/A07-middag-320-floater.webp](audit-screenshots/A07-middag-320-floater.webp)
-- **PR:** _pending_
+- **PR:** [#25](https://github.com/knutjoha/agency-jekyll-theme/pull/25)
 
 ### A08 — Fixture Todo opens an editor on first paint
 
@@ -186,7 +201,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** A resting list. Snapshot may freeze one card only if the visual test needs it.
 - **Actual:** `todoLanes` marks `maja-rom` as `editing`. Phone then forces `knut-dekk` into edit. Real fixture users land in a half-finished form, with a fake caret (`caretColor: transparent`).
 - **Screenshot:** [audit-screenshots/A08-todo-snapshot-edit.webp](audit-screenshots/A08-todo-snapshot-edit.webp)
-- **PR:** _pending_
+- **PR:** [#25](https://github.com/knutjoha/agency-jekyll-theme/pull/25)
 
 ### A09 — «Ny hendelse» does nothing
 
@@ -197,7 +212,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** An editor, or a disabled control that says the action is not available (calendar is read-only from Google).
 - **Actual:** The button has no `onClick`. URL does not change; no dialog.
 - **Screenshot:** [audit-screenshots/A09-kalender-ny-hendelse.webp](audit-screenshots/A09-kalender-ny-hendelse.webp)
-- **PR:** _pending_
+- **PR:** [#29](https://github.com/knutjoha/agency-jekyll-theme/pull/29)
 
 ### A10 — Dinner editor uses the same copy for validation and save failure
 
@@ -208,7 +223,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Field-specific Norwegian validation («Skriv inn en rett», «Minutter må være et tall mellom 1 og 600»).
 - **Actual:** Always `Fikk ikke lagret middagen. Prøv igjen.` — a retry message for a client-side validation miss.
 - **Screenshot:** [audit-screenshots/A10-editor-error.webp](audit-screenshots/A10-editor-error.webp)
-- **PR:** _pending_
+- **PR:** [#26](https://github.com/knutjoha/agency-jekyll-theme/pull/26)
 
 ### A11 — Dinner dialog does not trap focus or close on backdrop
 
@@ -219,7 +234,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Focus stays in the dialog; backdrop click (or a documented choice) closes it. Escape already works.
 - **Actual:** Focus walks into the nav rail and shopping list. Backdrop click leaves the dialog open. No `aria-modal` focus loop.
 - **Screenshot:** [audit-screenshots/A10-editor-error.webp](audit-screenshots/A10-editor-error.webp)
-- **PR:** _pending_
+- **PR:** [#26](https://github.com/knutjoha/agency-jekyll-theme/pull/26)
 
 ### A12 — Touch targets under 44×44 px
 
@@ -230,7 +245,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** ≥44×44 px CSS hit area.
 - **Actual:** Shopping checkboxes 20×20, middag grip 15×15, pencil 14×14, week chevrons 38×38, Ukemeny/Handleliste switch 34 px tall, tab-bar items ~42 px tall before safe-area, todo checkboxes 26×26, frist calendar cells 32×32.
 - **Screenshot:** [audit-screenshots/A07-middag-320-floater.webp](audit-screenshots/A07-middag-320-floater.webp), [A08-todo-snapshot-edit.webp](audit-screenshots/A08-todo-snapshot-edit.webp)
-- **PR:** _pending_
+- **PR:** [#28](https://github.com/knutjoha/agency-jekyll-theme/pull/28)
 
 ### A13 — Todo undo toast never auto-dismisses
 
@@ -241,7 +256,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Toast times out (or offers dismiss) so it does not cover «Ny oppgave».
 - **Actual:** `removed` stays until Angre or another delete. After 6 s the toast was still in the DOM.
 - **Screenshot:** [audit-screenshots/A13-todo-toast.webp](audit-screenshots/A13-todo-toast.webp)
-- **PR:** _pending_
+- **PR:** [#27](https://github.com/knutjoha/agency-jekyll-theme/pull/27)
 
 ### A14 — Phone landscape: toast covers the list and the tab bar
 
@@ -252,7 +267,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Toast sits above the tab bar without hiding the first tasks.
 - **Actual:** Fixed toast at `bottom: calc(72px + env(safe-area-inset-bottom))` covers Ulla’s remaining cards and overlaps the tab bar.
 - **Screenshot:** [audit-screenshots/A14-todo-landscape-toast.webp](audit-screenshots/A14-todo-landscape-toast.webp)
-- **PR:** _pending_
+- **PR:** [#27](https://github.com/knutjoha/agency-jekyll-theme/pull/27)
 
 ### A15 — Hjem dinner tile is not a link
 
@@ -263,7 +278,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Goes to `/middag` (the tile is the only dinner surface on Hjem).
 - **Actual:** Static `<section>`. Phone Hjem has no dinner entry at all (by design of the phone frame), so the wide tile is the hallway shortcut and it is dead.
 - **Screenshot:** [audit-screenshots/A01-home-1920-stretch.webp](audit-screenshots/A01-home-1920-stretch.webp)
-- **PR:** _pending_
+- **PR:** [#30](https://github.com/knutjoha/agency-jekyll-theme/pull/30)
 
 ### A16 — `--text-muted` on `--tile-2` fails WCAG AA
 
@@ -285,7 +300,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Page scrolls or tiles shrink so Været i dag is fully visible.
 - **Actual:** `MAIN-VCLIP 992>800`. Weather tile is cut off. Grouped with A01.
 - **Screenshot:** [audit-screenshots/A01-home-1024-clip.webp](audit-screenshots/A01-home-1024-clip.webp)
-- **PR:** grouped with A01
+- **PR:** [#21](https://github.com/knutjoha/agency-jekyll-theme/pull/21)
 
 ### A19 — Transport / hentepiller missing on Hjem
 
@@ -296,7 +311,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** The pickup tag from PR #18 still shows on I dag.
 - **Actual:** `PersonRow` and `HomeMobile` PersonCard never render `person.transport`. Kalender still warns. Product copy in `privacy.html` still mentions hentenotater.
 - **Screenshot:** [audit-screenshots/home-320.webp](audit-screenshots/home-320.webp)
-- **PR:** _pending_
+- **PR:** [#30](https://github.com/knutjoha/agency-jekyll-theme/pull/30)
 
 ### A24 — Kalender day chips overflow at 768
 
@@ -307,7 +322,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Activity titles wrap or ellipsize inside the cell.
 - **Actual:** «Håndballkamp», «Familiekveld», «sjåfør» clip inside 7 columns + 140 px name column.
 - **Screenshot:** [audit-screenshots/A24-kalender-768.webp](audit-screenshots/A24-kalender-768.webp)
-- **PR:** _pending_
+- **PR:** [#31](https://github.com/knutjoha/agency-jekyll-theme/pull/31)
 
 ### A25 — Todo cards are not keyboard-activatable
 
@@ -318,7 +333,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Cards in the tab order; Enter/Space opens edit.
 - **Actual:** `<article onClick>` has no `tabIndex`. Filters and «Ny oppgave» are reachable; existing tasks are not. Grouped with the todo responsive PR if a small `role="button"` is enough; otherwise skipped as a larger a11y pass.
 - **Screenshot:** [audit-screenshots/todo-frist-open.webp](audit-screenshots/todo-frist-open.webp)
-- **PR:** _pending_
+- **PR:** [#23](https://github.com/knutjoha/agency-jekyll-theme/pull/23)
 
 ### A26 — Hjem dinner dish is fixture-only, not the ukemeny
 
@@ -338,7 +353,7 @@ Legend: `[x]` tested at 320, 375, 414, 768, 1024, 1280, 1440, 1920 and 667×375 
 - **Expected:** Content max-width / centering so line length and tile proportions hold.
 - **Actual:** The 786+400 hallway sits left-aligned in a sea of `--bg`. Grouped as polish with A01 if a `max-width` is cheap; otherwise next.
 - **Screenshot:** [audit-screenshots/A01-home-1920-stretch.webp](audit-screenshots/A01-home-1920-stretch.webp)
-- **PR:** grouped with A01 if it stays a max-width, else skipped
+- **PR:** [#21](https://github.com/knutjoha/agency-jekyll-theme/pull/21) (1400 px cap on the hallway page)
 
 ### P3 (no PR)
 
@@ -357,19 +372,17 @@ The app has **one** layout breakpoint: `max-width: 767px` in `globals.css` (phon
 
 ## Issue → PR index
 
-Filled in as each fix PR opens.
-
 | ID | PR |
 |---|---|
-| A01 A18 A27 | |
-| A02 A05 | |
-| A03 A04 A25 | |
-| A06 | |
-| A07 A08 | |
-| A09 | |
-| A10 A11 | |
-| A12 | |
-| A13 A14 | |
-| A15 A19 | |
-| A24 | |
+| A01 A18 A27 | [#21](https://github.com/knutjoha/agency-jekyll-theme/pull/21) |
+| A02 A05 | [#22](https://github.com/knutjoha/agency-jekyll-theme/pull/22) |
+| A03 A04 A25 | [#23](https://github.com/knutjoha/agency-jekyll-theme/pull/23) |
+| A06 | [#24](https://github.com/knutjoha/agency-jekyll-theme/pull/24) |
+| A07 A08 | [#25](https://github.com/knutjoha/agency-jekyll-theme/pull/25) |
+| A09 | [#29](https://github.com/knutjoha/agency-jekyll-theme/pull/29) |
+| A10 A11 | [#26](https://github.com/knutjoha/agency-jekyll-theme/pull/26) |
+| A12 | [#28](https://github.com/knutjoha/agency-jekyll-theme/pull/28) |
+| A13 A14 | [#27](https://github.com/knutjoha/agency-jekyll-theme/pull/27) |
+| A15 A19 | [#30](https://github.com/knutjoha/agency-jekyll-theme/pull/30) |
+| A24 | [#31](https://github.com/knutjoha/agency-jekyll-theme/pull/31) |
 | A16 A26 | skipped |
