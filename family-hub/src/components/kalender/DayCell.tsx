@@ -61,6 +61,11 @@ function ActivityChip({ block, colorToken }: { block: Extract<CalendarBlock, { k
           lineHeight: 1.15,
           fontWeight: 400,
           color: "var(--text)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          display: "-webkit-box",
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: "vertical",
         }}
       >
         {block.title}
@@ -75,6 +80,8 @@ function ActivityChip({ block, colorToken }: { block: Extract<CalendarBlock, { k
               lineHeight: 1,
               fontWeight: 400,
               color: "var(--accent)",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
               whiteSpace: "nowrap",
             }}
           >
