@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { dinner as fixtureDinner } from "@/data/fixture";
 import { navHref } from "@/components/shell/navItems";
+import { DeparturesTile } from "@/components/hjem/DeparturesTile";
 import { DinnerTile } from "@/components/hjem/DinnerTile";
 import { FreshnessLine } from "@/components/hjem/FreshnessLine";
 import { HomeMobile } from "@/components/hjem/HomeMobile";
@@ -11,8 +12,9 @@ import { TodayTile } from "@/components/hjem/TodayTile";
 import { WeatherTile } from "@/components/hjem/WeatherTile";
 import { HallwayPage } from "@/components/shell/HallwayPage";
 import type { CalendarPayload, CalendarSource, Person, SoonItem, WeatherView } from "@/data/types";
+import { fixtureDepartures, selectDepartures, type Departure } from "@/lib/departures";
 import { rollSoon, withEventPhases, type HomeDinner, type SectionId, type SectionPhase } from "@/lib/home-cache";
-import { meteogramNowHour, type OsloNow } from "@/lib/oslo";
+import { meteogramNowHour, SNAPSHOT_AT, type OsloNow } from "@/lib/oslo";
 import { useCalendar } from "@/lib/use-calendar";
 import { useHomeLive } from "@/lib/use-home-live";
 
@@ -20,6 +22,7 @@ const HOLD_LABEL: Record<SectionId, string> = {
   calendar: "Fikk ikke hentet kalenderen",
   weather: "Fikk ikke hentet været",
   dinner: "Fikk ikke hentet middagen",
+  departures: "Fikk ikke hentet avgangene",
 };
 
 function Hold({ region, phase, section }: { region: string; phase: SectionPhase; section: SectionId }) {
@@ -72,6 +75,7 @@ function HomeColumns({
   people,
   soon,
   dinner,
+  departures,
   source,
   phase,
   updatedAt,
@@ -82,6 +86,7 @@ function HomeColumns({
   people: Person[] | null;
   soon: SoonItem[] | null;
   dinner: HomeDinner | null;
+  departures: Departure[] | null;
   source: CalendarSource;
   phase: Record<SectionId, SectionPhase> | null;
   updatedAt: Record<SectionId, string | null> | null;
@@ -143,6 +148,11 @@ function HomeColumns({
         ) : (
           <Hold region="dinner" phase={phase?.dinner ?? "loading"} section="dinner" />
         )}
+        {departures ? (
+          <DeparturesTile rows={departures} note={note("departures")} />
+        ) : (
+          <Hold region="departures" phase={phase?.departures ?? "loading"} section="departures" />
+        )}
         {soon ? <SoonTile items={soon} note={note("calendar")} /> : <Hold region="soon" phase={phase?.calendar ?? "loading"} section="calendar" />}
       </div>
     </div>
@@ -165,7 +175,13 @@ function FrozenHome({
       initialWeather={initialWeather}
       initialNow={initialNow}
       mobile={(clock, weather) => (
-        <HomeMobile clock={clock} weather={weather} people={calendar.todayPeople} soon={calendar.soon ?? []} />
+        <HomeMobile
+          clock={clock}
+          weather={weather}
+          people={calendar.todayPeople}
+          soon={calendar.soon ?? []}
+          departures={selectDepartures(fixtureDepartures.rows, SNAPSHOT_AT)}
+        />
       )}
     >
       {(clock) => (
@@ -176,6 +192,7 @@ function FrozenHome({
           people={calendar.todayPeople}
           soon={calendar.soon ?? []}
           dinner={{ dish: fixtureDinner.dish, shoppingCount: fixtureDinner.shoppingCount, planned: true }}
+          departures={selectDepartures(fixtureDepartures.rows, SNAPSHOT_AT)}
           source={calendar.source}
           phase={null}
           updatedAt={null}
@@ -202,6 +219,7 @@ function LiveHome({ initialNow }: { initialNow: string }) {
           people={people ? withEventPhases(people, clock) : []}
           soon={soon ?? []}
           dinner={live.dinner}
+          departures={live.departures ? selectDepartures(live.departures.rows, new Date()) : null}
           phase={live.phase}
           updatedAt={live.updatedAt}
           waiting={!live.calendar}
@@ -216,6 +234,7 @@ function LiveHome({ initialNow }: { initialNow: string }) {
           people={people}
           soon={soon}
           dinner={live.dinner}
+          departures={live.departures ? selectDepartures(live.departures.rows, new Date()) : null}
           source={live.calendar?.source ?? "fixture"}
           phase={live.phase}
           updatedAt={live.updatedAt}

@@ -1,5 +1,6 @@
 import type { CalendarPayload, WeatherView } from "../data/types";
 import { isCalendarPayload } from "./calendar-view";
+import { isDeparturesView, type DeparturesView } from "./departures";
 import { isWeatherView, mealFromDinnerPayload, shoppingCountFromPayload } from "./home-cache";
 
 export const SECTION_TIMEOUT_MS = 8000;
@@ -17,11 +18,11 @@ export type LoadedDinner = {
 
 /**
  * Home launch requests. None of these wait on each other:
- * calendar, weather, dinner and shopping are independent.
+ * calendar, weather, dinner, shopping and departures are independent.
  * The only sequential chain is inside the weather route, where the Yr
  * forecast URL is only known after the location search.
  */
-export const HOME_REQUESTS = ["/api/calendar", "/api/weather", "/api/dinner", "/api/shopping"] as const;
+export const HOME_REQUESTS = ["/api/calendar", "/api/weather", "/api/dinner", "/api/shopping", "/api/departures"] as const;
 
 export function outcomeForStatus(status: number): "ok" | "error" {
   return status >= 200 && status < 300 ? "ok" : "error";
@@ -58,6 +59,17 @@ export async function loadWeather(fetchImpl: FetchLike, timeoutMs: number, signa
   return { ok: true, data: result.body };
 }
 
+export async function loadDepartures(
+  fetchImpl: FetchLike,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<SectionResult<DeparturesView>> {
+  const result = await fetchJson("/api/departures", fetchImpl, timeoutMs, signal);
+  if (!result.ok) return result;
+  if (!isDeparturesView(result.body)) return { ok: false, status: 422 };
+  return { ok: true, data: result.body };
+}
+
 export async function loadDinner(fetchImpl: FetchLike, timeoutMs: number, signal: AbortSignal | undefined, now: Date): Promise<SectionResult<LoadedDinner>> {
   const [mealResult, shoppingResult] = await Promise.all([
     fetchJson("/api/dinner", fetchImpl, timeoutMs, signal),
@@ -77,13 +89,15 @@ export async function loadHomeSections(
   calendar: SectionResult<CalendarPayload>;
   weather: SectionResult<WeatherView>;
   dinner: SectionResult<LoadedDinner>;
+  departures: SectionResult<DeparturesView>;
 }> {
   const timeoutMs = options?.timeoutMs ?? SECTION_TIMEOUT_MS;
   const now = options?.now ?? new Date();
-  const [calendar, weather, dinner] = await Promise.all([
+  const [calendar, weather, dinner, departures] = await Promise.all([
     loadCalendar(fetchImpl, timeoutMs, options?.signal),
     loadWeather(fetchImpl, timeoutMs, options?.signal),
     loadDinner(fetchImpl, timeoutMs, options?.signal, now),
+    loadDepartures(fetchImpl, timeoutMs, options?.signal),
   ]);
-  return { calendar, weather, dinner };
+  return { calendar, weather, dinner, departures };
 }

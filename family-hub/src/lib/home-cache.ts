@@ -1,30 +1,35 @@
 import type { CalendarPayload, SoonItem, WeatherSymbol, WeatherView } from "../data/types";
 import { isCalendarPayload, mondayOf } from "./calendar-view";
+import { isDeparturesView, type DeparturesView } from "./departures";
 import { formatOslo, osloDateKey, osloMidnightUtc, osloParts } from "./oslo";
 
 export const HOME_SNAPSHOT_VERSION = 1;
 export const HOME_SNAPSHOT_KEY = "family-hub.home.v1";
 
+export const HOME_SECTIONS = ["calendar", "weather", "dinner", "departures"] as const;
+
 /** How long a cached section may be shown as current before it is marked updating. */
-export const SECTION_MAX_AGE_MS = {
+export const SECTION_MAX_AGE_MS: Record<(typeof HOME_SECTIONS)[number], number> = {
   calendar: 5 * 60 * 1000,
   dinner: 5 * 60 * 1000,
   weather: 30 * 60 * 1000,
-} as const;
+  departures: 90 * 1000,
+};
 
 /** How often a visible home screen refetches each section. */
-export const SECTION_REFRESH_MS = {
+export const SECTION_REFRESH_MS: Record<(typeof HOME_SECTIONS)[number], number> = {
   calendar: 90 * 1000,
   dinner: 90 * 1000,
   weather: 12 * 60 * 1000,
-} as const;
+  departures: 45 * 1000,
+};
 
 /** A timed event stays "now" for this long after it starts when the payload has no end. */
 export const EVENT_WINDOW_MINUTES = 60;
 
 export const NO_DINNER_TODAY = "Ingen middag i dag";
 
-export type SectionId = keyof typeof SECTION_MAX_AGE_MS;
+export type SectionId = (typeof HOME_SECTIONS)[number];
 
 export type SectionFreshness = "missing" | "fresh" | "stale" | "wrong-day";
 
@@ -47,6 +52,8 @@ export type HomeSnapshot = {
   weatherMeta: SectionMeta | null;
   dinner: HomeDinner | null;
   dinnerMeta: SectionMeta | null;
+  departures: DeparturesView | null;
+  departuresMeta: SectionMeta | null;
 };
 
 export type SectionView<T> = {
@@ -59,6 +66,7 @@ export type VisibleHome = {
   calendar: SectionView<CalendarPayload>;
   weather: SectionView<WeatherView>;
   dinner: SectionView<HomeDinner>;
+  departures: SectionView<DeparturesView>;
 };
 
 export type RefreshReason = "mount" | "resume" | "reconnect" | "midnight" | "interval";
@@ -91,6 +99,8 @@ export function emptyHomeSnapshot(): HomeSnapshot {
     weatherMeta: null,
     dinner: null,
     dinnerMeta: null,
+    departures: null,
+    departuresMeta: null,
   };
 }
 
@@ -176,6 +186,8 @@ export function parseHomeSnapshot(raw: string | null): HomeSnapshot | null {
     weatherMeta: isMeta(snapshot.weatherMeta) ? snapshot.weatherMeta : null,
     dinner: isHomeDinner(snapshot.dinner) ? snapshot.dinner : null,
     dinnerMeta: isMeta(snapshot.dinnerMeta) ? snapshot.dinnerMeta : null,
+    departures: isDeparturesView(snapshot.departures) ? snapshot.departures : null,
+    departuresMeta: isMeta(snapshot.departuresMeta) ? snapshot.departuresMeta : null,
   };
 }
 
@@ -219,6 +231,7 @@ export function visibleHome(store: KeyValueStore, now: Date): VisibleHome {
     calendar: viewSection(snapshot?.calendar ?? null, snapshot?.calendarMeta ?? null, "calendar", now),
     weather: viewSection(snapshot?.weather ?? null, snapshot?.weatherMeta ?? null, "weather", now),
     dinner: viewSection(snapshot?.dinner ?? null, snapshot?.dinnerMeta ?? null, "dinner", now),
+    departures: viewSection(snapshot?.departures ?? null, snapshot?.departuresMeta ?? null, "departures", now),
   };
 }
 
@@ -231,9 +244,12 @@ export function writeHomeSection<T>(store: KeyValueStore, section: SectionId, da
   } else if (section === "weather") {
     snapshot.weather = data as WeatherView;
     snapshot.weatherMeta = meta;
-  } else {
+  } else if (section === "dinner") {
     snapshot.dinner = data as HomeDinner;
     snapshot.dinnerMeta = meta;
+  } else {
+    snapshot.departures = data as DeparturesView;
+    snapshot.departuresMeta = meta;
   }
   try {
     store.setItem(HOME_SNAPSHOT_KEY, JSON.stringify(snapshot));
@@ -256,7 +272,7 @@ export function initialPhase(freshness: SectionFreshness, online: boolean): Sect
 export function sectionsToRefresh(input: { reason: RefreshReason; section?: SectionId; hidden: boolean }): SectionId[] {
   if (input.hidden) return [];
   if (input.reason === "interval") return input.section ? [input.section] : [];
-  return ["calendar", "weather", "dinner"];
+  return [...HOME_SECTIONS];
 }
 
 export function retryDelayMs(attempt: number): number {

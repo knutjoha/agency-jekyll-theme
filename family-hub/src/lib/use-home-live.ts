@@ -2,8 +2,10 @@
 
 import { useLayoutEffect, useState } from "react";
 import type { CalendarPayload, WeatherView } from "@/data/types";
+import type { DeparturesView } from "@/lib/departures";
 import {
   browserStore,
+  HOME_SECTIONS,
   initialPhase,
   reconcileDinner,
   msUntilOsloMidnight,
@@ -18,13 +20,14 @@ import {
   type SectionId,
   type SectionPhase,
 } from "@/lib/home-cache";
-import { loadCalendar, loadDinner, loadWeather, SECTION_TIMEOUT_MS, type LoadedDinner } from "@/lib/home-load";
+import { loadCalendar, loadDepartures, loadDinner, loadWeather, SECTION_TIMEOUT_MS, type LoadedDinner } from "@/lib/home-load";
 import { osloDateKey } from "@/lib/oslo";
 
 export type HomeLive = {
   calendar: CalendarPayload | null;
   weather: WeatherView | null;
   dinner: HomeDinner | null;
+  departures: DeparturesView | null;
   phase: Record<SectionId, SectionPhase>;
   updatedAt: Record<SectionId, string | null>;
 };
@@ -43,8 +46,9 @@ function emptyLive(now: Date): LiveState {
     calendar: null,
     weather: null,
     dinner: null,
-    phase: { calendar: "loading", weather: "loading", dinner: "loading" },
-    updatedAt: { calendar: null, weather: null, dinner: null },
+    departures: null,
+    phase: { calendar: "loading", weather: "loading", dinner: "loading", departures: "loading" },
+    updatedAt: { calendar: null, weather: null, dinner: null, departures: null },
   };
 }
 
@@ -58,15 +62,18 @@ function fromStore(store: KeyValueStore, now: Date): LiveState {
     calendar: visible.calendar.data,
     weather: visible.weather.data,
     dinner: visible.dinner.data,
+    departures: visible.departures.data,
     updatedAt: {
       calendar: visible.calendar.updatedAt,
       weather: visible.weather.updatedAt,
       dinner: visible.dinner.updatedAt,
+      departures: visible.departures.updatedAt,
     },
     phase: {
       calendar: initialPhase(visible.calendar.freshness, online),
       weather: initialPhase(visible.weather.freshness, online),
       dinner: initialPhase(visible.dinner.freshness, online),
+      departures: initialPhase(visible.departures.freshness, online),
     },
   };
 }
@@ -86,12 +93,13 @@ export function useHomeLive(): HomeLive {
     let calendarTimer = 0;
     let dinnerTimer = 0;
     let weatherTimer = 0;
+    let departuresTimer = 0;
     let midnightTimer = 0;
     let resumeTimer = 0;
-    const retryTimers: Record<SectionId, number> = { calendar: 0, weather: 0, dinner: 0 };
-    const attempts: Record<SectionId, number> = { calendar: 0, weather: 0, dinner: 0 };
-    const inflight: Record<SectionId, boolean> = { calendar: false, weather: false, dinner: false };
-    const controllers: Record<SectionId, AbortController | null> = { calendar: null, weather: null, dinner: null };
+    const retryTimers: Record<SectionId, number> = { calendar: 0, weather: 0, dinner: 0, departures: 0 };
+    const attempts: Record<SectionId, number> = { calendar: 0, weather: 0, dinner: 0, departures: 0 };
+    const inflight: Record<SectionId, boolean> = { calendar: false, weather: false, dinner: false, departures: false };
+    const controllers: Record<SectionId, AbortController | null> = { calendar: null, weather: null, dinner: null, departures: null };
 
     const now = new Date();
     if (store) {
@@ -115,8 +123,9 @@ export function useHomeLive(): HomeLive {
           calendar: null,
           weather: null,
           dinner: null,
-          updatedAt: { calendar: null, weather: null, dinner: null },
-          phase: { calendar: phase, weather: phase, dinner: phase },
+          departures: null,
+          updatedAt: { calendar: null, weather: null, dinner: null, departures: null },
+          phase: { calendar: phase, weather: phase, dinner: phase, departures: phase },
         };
       });
     };
@@ -177,6 +186,21 @@ export function useHomeLive(): HomeLive {
           }));
           return;
         }
+        if (section === "departures") {
+          const part = await loadDepartures(fetch, SECTION_TIMEOUT_MS, controller.signal);
+          if (stopped || controller.signal.aborted) return;
+          if (!part.ok) return fail();
+          attempts.departures = 0;
+          if (store) writeHomeSection(store, "departures", part.data, fetched);
+          setState((current) => ({
+            ...current,
+            osloDate: osloDateKey(fetched),
+            departures: sameSnapshotValue(current.departures, part.data) ? current.departures : part.data,
+            phase: { ...current.phase, departures: "ready" },
+            updatedAt: { ...current.updatedAt, departures: fetched.toISOString() },
+          }));
+          return;
+        }
         const part = await loadDinner(fetch, SECTION_TIMEOUT_MS, controller.signal, fetched);
         if (stopped || controller.signal.aborted) return;
         if (!part.ok) return fail();
@@ -213,10 +237,12 @@ export function useHomeLive(): HomeLive {
       window.clearInterval(calendarTimer);
       window.clearInterval(dinnerTimer);
       window.clearInterval(weatherTimer);
+      window.clearInterval(departuresTimer);
       window.clearTimeout(midnightTimer);
       window.clearTimeout(retryTimers.calendar);
       window.clearTimeout(retryTimers.weather);
       window.clearTimeout(retryTimers.dinner);
+      window.clearTimeout(retryTimers.departures);
     };
 
     const arm = () => {
@@ -234,6 +260,10 @@ export function useHomeLive(): HomeLive {
         if (sectionsToRefresh({ reason: "interval", section: "weather", hidden: document.hidden }).length === 0) return;
         void refresh("weather");
       }, SECTION_REFRESH_MS.weather);
+      departuresTimer = window.setInterval(() => {
+        if (sectionsToRefresh({ reason: "interval", section: "departures", hidden: document.hidden }).length === 0) return;
+        void refresh("departures");
+      }, SECTION_REFRESH_MS.departures);
       midnightTimer = window.setTimeout(() => {
         dropIfNewDay();
         refreshAll(true);
@@ -250,7 +280,7 @@ export function useHomeLive(): HomeLive {
       if (document.hidden) {
         lastAll = 0;
         clearTimers();
-        for (const section of ["calendar", "weather", "dinner"] as const) controllers[section]?.abort();
+        for (const section of HOME_SECTIONS) controllers[section]?.abort();
         return;
       }
       if (store) {
@@ -273,7 +303,7 @@ export function useHomeLive(): HomeLive {
       stopped = true;
       clearTimers();
       window.clearTimeout(resumeTimer);
-      for (const section of ["calendar", "weather", "dinner"] as const) controllers[section]?.abort();
+      for (const section of HOME_SECTIONS) controllers[section]?.abort();
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", onResume);
       window.removeEventListener("online", onResume);
