@@ -249,6 +249,7 @@ export function MiddagMobile({
         <>
           <button
             type="button"
+            className="pill-primary"
             data-plan="week"
             disabled={planBusy !== null}
             onClick={requestWeek}
@@ -537,8 +538,8 @@ function ShoppingList({
       {adding ? (
         <form onSubmit={(event) => { event.preventDefault(); onSave(); }} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--r-nested)", background: "var(--tile)", outline: "1.5px solid var(--accent)", outlineOffset: -0.75 }}>
           <input aria-label="Ny vare" autoFocus value={draftItem} onChange={(event) => onDraft(event.target.value)} style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--text)", fontFamily: "var(--font-body)", fontSize: 14 }} />
-          <button type="button" onClick={onCancel} style={ghostPill}>Avbryt</button>
-          <button type="submit" style={savePill}>Lagre</button>
+          <button type="button" className="pill-ghost" onClick={onCancel} style={pillBase}>Avbryt</button>
+          <button type="submit" className="pill-primary" style={pillBase}>Lagre</button>
         </form>
       ) : (
         <button type="button" onClick={onAdd} style={{ width: "100%", height: 48, display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, border: "none", background: "transparent", cursor: "pointer", outline: "1.5px solid #ffffff24", outlineOffset: -0.75, borderRadius: "var(--r-nested)", fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 400, color: "var(--text-muted)" }}>
@@ -604,8 +605,6 @@ const suggestButton = {
   height: 44,
   border: "none",
   borderRadius: "var(--r-full)",
-  background: "var(--accent)",
-  color: "var(--ink)",
   fontFamily: "var(--font-body)",
   fontSize: 15,
   lineHeight: "normal",
@@ -645,5 +644,3 @@ const pillBase = {
   whiteSpace: "nowrap" as const,
 };
 
-const ghostPill = { ...pillBase, background: "var(--tile-3)", color: "var(--text-2)" };
-const savePill = { ...pillBase, background: "var(--accent)", color: "var(--ink)" };

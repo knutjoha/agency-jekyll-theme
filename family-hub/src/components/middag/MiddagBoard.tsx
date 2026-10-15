@@ -244,6 +244,7 @@ export function MiddagBoard({
           {menuPersisted ? (
             <button
               type="button"
+              className="pill-primary"
               data-plan="week"
               disabled={planBusy !== null}
               onClick={requestWeek}
@@ -406,10 +407,10 @@ export function MiddagBoard({
               onChange={(event) => setDraftItem(event.target.value)}
               style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--text)", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal" }}
             />
-            <button type="button" onClick={() => { setAdding(false); setDraftItem(""); }} style={ghostPill}>
+            <button type="button" className="pill-ghost" onClick={() => { setAdding(false); setDraftItem(""); }} style={pillBase}>
               Avbryt
             </button>
-            <button type="submit" style={savePill}>
+            <button type="submit" className="pill-primary" style={pillBase}>
               Lagre
             </button>
           </form>
@@ -615,9 +616,6 @@ const pillBase = {
   whiteSpace: "nowrap" as const,
 };
 
-const ghostPill = { ...pillBase, background: "var(--tile-3)", color: "var(--text-2)" };
-const savePill = { ...pillBase, background: "var(--accent)", color: "var(--ink)" };
-
 const suggestPill = {
   display: "flex",
   alignItems: "center",
@@ -625,8 +623,6 @@ const suggestPill = {
   padding: "7px 13px",
   border: "none",
   borderRadius: "var(--r-full)",
-  background: "var(--accent)",
-  color: "var(--ink)",
   fontFamily: "var(--font-body)",
   fontSize: 14,
   lineHeight: "normal",

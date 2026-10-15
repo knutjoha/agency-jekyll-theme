@@ -89,6 +89,7 @@ export function TodoEditor({
         {onDelete ? <DeletePill onClick={onDelete} /> : <span />}
         <button
           type="button"
+          className="pill-primary"
           onClick={(event) => {
             event.stopPropagation();
             onSave();
@@ -212,6 +213,7 @@ function Shortcut({ label, selected, onClick }: { label: string; selected: boole
     <button
       type="button"
       aria-pressed={selected}
+      className={selected ? "pill-primary" : "pill-ghost"}
       onMouseDown={(event) => event.preventDefault()}
       onClick={(event) => {
         event.stopPropagation();
@@ -222,8 +224,6 @@ function Shortcut({ label, selected, onClick }: { label: string; selected: boole
         padding: "8px 14px",
         border: "none",
         borderRadius: "var(--r-full)",
-        background: selected ? "var(--accent)" : "var(--tile-3)",
-        color: selected ? "var(--ink)" : "var(--text)",
         cursor: "pointer",
         fontFamily: "var(--font-body)",
         fontSize: 13,
@@ -277,8 +277,6 @@ const savePill = {
   padding: "9px 16px",
   border: "none",
   borderRadius: "var(--r-full)",
-  background: "var(--accent)",
-  color: "var(--ink)",
   cursor: "pointer",
   fontFamily: "var(--font-body)",
   fontSize: 13,
