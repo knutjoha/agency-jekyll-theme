@@ -76,6 +76,7 @@ function HomeColumns({
   soon,
   dinner,
   departures,
+  now,
   source,
   phase,
   updatedAt,
@@ -87,6 +88,7 @@ function HomeColumns({
   soon: SoonItem[] | null;
   dinner: HomeDinner | null;
   departures: LineDepartures[] | null;
+  now: Date;
   source: CalendarSource;
   phase: Record<SectionId, SectionPhase> | null;
   updatedAt: Record<SectionId, string | null> | null;
@@ -149,7 +151,7 @@ function HomeColumns({
           <Hold region="dinner" phase={phase?.dinner ?? "loading"} section="dinner" />
         )}
         {departures ? (
-          <DeparturesTile lines={departures} note={note("departures")} />
+          <DeparturesTile lines={departures} now={now} note={note("departures")} />
         ) : (
           <Hold region="departures" phase={phase?.departures ?? "loading"} section="departures" />
         )}
@@ -181,6 +183,7 @@ function FrozenHome({
           people={calendar.todayPeople}
           soon={calendar.soon ?? []}
           departures={selectDepartureLines(fixtureDepartures.rows, SNAPSHOT_AT)}
+          now={SNAPSHOT_AT}
         />
       )}
     >
@@ -193,6 +196,7 @@ function FrozenHome({
           soon={calendar.soon ?? []}
           dinner={{ dish: fixtureDinner.dish, shoppingCount: fixtureDinner.shoppingCount, planned: true }}
           departures={selectDepartureLines(fixtureDepartures.rows, SNAPSHOT_AT)}
+          now={SNAPSHOT_AT}
           source={calendar.source}
           phase={null}
           updatedAt={null}
@@ -212,34 +216,42 @@ function LiveHome({ initialNow }: { initialNow: string }) {
       initialWeather={live.weather}
       initialNow={initialNow}
       externalWeather
-      mobile={(clock) => (
-        <HomeMobile
-          clock={clock}
-          weather={live.weather}
-          people={people ? withEventPhases(people, clock) : []}
-          soon={soon ?? []}
-          dinner={live.dinner}
-          departures={live.departures ? selectDepartureLines(live.departures.rows, new Date()) : null}
-          phase={live.phase}
-          updatedAt={live.updatedAt}
-          waiting={!live.calendar}
-        />
-      )}
+      mobile={(clock) => {
+        const now = new Date();
+        return (
+          <HomeMobile
+            clock={clock}
+            weather={live.weather}
+            people={people ? withEventPhases(people, clock) : []}
+            soon={soon ?? []}
+            dinner={live.dinner}
+            departures={live.departures ? selectDepartureLines(live.departures.rows, now) : null}
+            now={now}
+            phase={live.phase}
+            updatedAt={live.updatedAt}
+            waiting={!live.calendar}
+          />
+        );
+      }}
     >
-      {(clock) => (
-        <HomeColumns
-          snapshot={false}
-          clock={clock}
-          weather={live.weather}
-          people={people}
-          soon={soon}
-          dinner={live.dinner}
-          departures={live.departures ? selectDepartureLines(live.departures.rows, new Date()) : null}
-          source={live.calendar?.source ?? "fixture"}
-          phase={live.phase}
-          updatedAt={live.updatedAt}
-        />
-      )}
+      {(clock) => {
+        const now = new Date();
+        return (
+          <HomeColumns
+            snapshot={false}
+            clock={clock}
+            weather={live.weather}
+            people={people}
+            soon={soon}
+            dinner={live.dinner}
+            departures={live.departures ? selectDepartureLines(live.departures.rows, now) : null}
+            now={now}
+            source={live.calendar?.source ?? "fixture"}
+            phase={live.phase}
+            updatedAt={live.updatedAt}
+          />
+        );
+      }}
     </HallwayPage>
   );
 }

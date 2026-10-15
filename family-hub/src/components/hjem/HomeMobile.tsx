@@ -104,6 +104,7 @@ export function HomeMobile({
   soon,
   dinner,
   departures,
+  now,
   phase,
   updatedAt,
   waiting = false,
@@ -114,6 +115,7 @@ export function HomeMobile({
   soon: SoonItem[];
   dinner?: HomeDinner | null;
   departures: LineDepartures[] | null;
+  now: Date;
   phase?: Record<SectionId, SectionPhase>;
   updatedAt?: Record<SectionId, string | null>;
   waiting?: boolean;
@@ -220,6 +222,7 @@ export function HomeMobile({
         <DeparturesTile
           compact
           lines={departures}
+          now={now}
           note={phase && updatedAt ? <FreshnessLine phase={phase.departures} updatedAt={updatedAt.departures} /> : null}
         />
       ) : (

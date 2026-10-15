@@ -1,19 +1,34 @@
 import type { ReactNode } from "react";
 import { departureDisplay, type Departure, type LineDepartures } from "@/lib/departures";
 
-function DepartureTime({ departure, compact }: { departure: Departure; compact: boolean }) {
-  const display = departureDisplay(departure);
+const TONE_BACKGROUND = {
+  ontime: "var(--departure-ontime)",
+  delayed: "var(--departure-delayed)",
+  cancelled: "var(--departure-cancelled)",
+} as const;
+
+function DepartureTime({ departure, now, compact }: { departure: Departure; now: Date; compact: boolean }) {
+  const display = departureDisplay(departure, now);
   return (
     <div
       data-cancelled={display.cancelled ? "true" : "false"}
       data-delay={display.delayLabel ?? ""}
+      data-until={display.untilLabel ?? ""}
+      data-tone={display.tone}
       style={{
-        flex: compact ? "1 1 0" : "0 0 auto",
-        minWidth: compact ? 0 : 68,
+        flex: compact ? "1 1 0" : "0 0 84px",
+        width: compact ? undefined : 84,
+        minWidth: compact ? 0 : 84,
+        minHeight: compact ? 56 : 62,
+        boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        alignItems: compact ? "center" : "flex-end",
-        gap: 4,
+        alignItems: "center",
+        justifyContent: "flex-start",
+        gap: 3,
+        padding: compact ? "6px 4px" : "7px 8px",
+        borderRadius: 8,
+        background: TONE_BACKGROUND[display.tone],
       }}
     >
       <div
@@ -29,7 +44,35 @@ function DepartureTime({ departure, compact }: { departure: Departure; compact: 
       >
         {display.time}
       </div>
-      {display.delayLabel ? (
+      {display.untilLabel ? (
+        <div
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: compact ? 12 : 13,
+            lineHeight: 1,
+            fontWeight: 400,
+            color: display.untilLabel === "nå" ? "var(--accent)" : "var(--text-muted)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {display.untilLabel}
+        </div>
+      ) : null}
+      {display.tone === "delayed" && display.delayLabel ? (
+        <div
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: compact ? 10 : 11,
+            lineHeight: 1,
+            fontWeight: 400,
+            color: "var(--accent)",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {display.delayLabel}
+        </div>
+      ) : null}
+      {display.cancelled ? (
         <div
           style={{
             fontFamily: "var(--font-body)",
@@ -40,14 +83,14 @@ function DepartureTime({ departure, compact }: { departure: Departure; compact: 
             whiteSpace: "nowrap",
           }}
         >
-          {display.delayLabel}
+          Innstilt
         </div>
       ) : null}
     </div>
   );
 }
 
-function LineRow({ line, compact }: { line: LineDepartures; compact: boolean }) {
+function LineRow({ line, now, compact }: { line: LineDepartures; now: Date; compact: boolean }) {
   const identity = (
     <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: compact ? 8 : 12, minWidth: 0, flex: compact ? undefined : 1 }}>
       <div
@@ -106,13 +149,13 @@ function LineRow({ line, compact }: { line: LineDepartures; compact: boolean }) 
           flexDirection: "row",
           alignItems: "flex-start",
           justifyContent: compact ? "space-between" : "flex-end",
-          gap: compact ? 4 : 14,
+          gap: compact ? 6 : 8,
           flexShrink: 0,
           width: compact ? "100%" : "auto",
         }}
       >
         {line.departures.map((departure) => (
-          <DepartureTime key={departure.id} departure={departure} compact={compact} />
+          <DepartureTime key={departure.id} departure={departure} now={now} compact={compact} />
         ))}
       </div>
     );
@@ -137,10 +180,12 @@ function LineRow({ line, compact }: { line: LineDepartures; compact: boolean }) 
 
 export function DeparturesTile({
   lines,
+  now,
   note,
   compact = false,
 }: {
   lines: LineDepartures[];
+  now: Date;
   note?: ReactNode;
   compact?: boolean;
 }) {
@@ -197,7 +242,7 @@ export function DeparturesTile({
       {note}
       <div style={{ display: "flex", flexDirection: "column", gap: compact ? 12 : 14 }}>
         {lines.map((line) => (
-          <LineRow key={line.line} line={line} compact={compact} />
+          <LineRow key={line.line} line={line} now={now} compact={compact} />
         ))}
       </div>
     </section>

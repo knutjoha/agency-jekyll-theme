@@ -51,10 +51,14 @@ export type EstimatedCall = {
   } | null;
 };
 
+export type DepartureTone = "ontime" | "delayed" | "cancelled";
+
 export type DepartureDisplay = {
   time: string;
   delayLabel: string | null;
+  untilLabel: string | null;
   cancelled: boolean;
+  tone: DepartureTone;
 };
 
 const LINE_IDS = new Set<DepartureLine>(["L1", "150"]);
@@ -254,14 +258,28 @@ export function delayMinutes(aimed: string, expected: string): number {
   return Math.round(delta / 60_000);
 }
 
-export function departureDisplay(departure: Departure): DepartureDisplay {
+/** Countdown from expected departure. Under a minute is "nå". */
+export function untilLabel(expected: string, now: Date): string | null {
+  const parsed = Date.parse(expected);
+  if (!Number.isFinite(parsed)) return null;
+  const remaining = parsed - now.getTime();
+  if (remaining < 60_000) return "nå";
+  return `om ${Math.round(remaining / 60_000)} min`;
+}
+
+export function departureDisplay(departure: Departure, now: Date): DepartureDisplay {
   const when = departure.cancelled ? departure.aimed : departure.expected || departure.aimed;
   const parsed = new Date(when);
   const time = Number.isNaN(parsed.getTime()) ? "—" : formatOslo(parsed).time;
-  if (departure.cancelled) return { time, delayLabel: "Innstilt", cancelled: true };
+  if (departure.cancelled) {
+    return { time, delayLabel: "Innstilt", untilLabel: null, cancelled: true, tone: "cancelled" };
+  }
   const delay = delayMinutes(departure.aimed, departure.expected);
-  if (delay >= 1) return { time, delayLabel: `+${delay} min`, cancelled: false };
-  return { time, delayLabel: null, cancelled: false };
+  const until = untilLabel(departure.expected || departure.aimed, now);
+  if (delay >= 1) {
+    return { time, delayLabel: `+${delay} min`, untilLabel: until, cancelled: false, tone: "delayed" };
+  }
+  return { time, delayLabel: null, untilLabel: until, cancelled: false, tone: "ontime" };
 }
 
 function upcomingDepartures(rows: Departure[], now: Date): Departure[] {
