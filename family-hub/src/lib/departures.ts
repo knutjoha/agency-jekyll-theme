@@ -94,27 +94,31 @@ export const DEPARTURES_QUERY = `query FamilyHubDepartures {
   }
 }`;
 
-/** Frozen hallway clock is 07:42 Europe/Oslo. The fourth upcoming row stays off the tile. */
+export type LineDepartures = {
+  line: DepartureLine;
+  destination: string;
+  departures: Departure[];
+};
+
+const LINE_ORDER: DepartureLine[] = ["L1", "150"];
+const LINE_DESTINATION: Record<DepartureLine, string> = {
+  L1: "Lillestrøm",
+  "150": "Nationaltheatret",
+};
+
+/** Frozen hallway clock is 07:42 Europe/Oslo. Each line keeps three upcoming trips; a fourth stays off. */
 export const fixtureDepartures: DeparturesView = {
   rows: [
     {
-      id: "past",
-      line: "150",
-      destination: "Nationaltheatret",
-      aimed: "2026-10-03T05:30:00.000Z",
-      expected: "2026-10-03T05:30:00.000Z",
+      id: "l1-past",
+      line: "L1",
+      destination: "Lillestrøm",
+      aimed: "2026-10-03T05:10:00.000Z",
+      expected: "2026-10-03T05:10:00.000Z",
       cancelled: false,
     },
     {
-      id: "bus",
-      line: "150",
-      destination: "Nationaltheatret",
-      aimed: "2026-10-03T05:46:00.000Z",
-      expected: "2026-10-03T05:49:00.000Z",
-      cancelled: false,
-    },
-    {
-      id: "l1",
+      id: "l1-on",
       line: "L1",
       destination: "Lillestrøm",
       aimed: "2026-10-03T05:56:00.000Z",
@@ -122,7 +126,47 @@ export const fixtureDepartures: DeparturesView = {
       cancelled: false,
     },
     {
-      id: "cancel",
+      id: "l1-delay",
+      line: "L1",
+      destination: "Lillestrøm",
+      aimed: "2026-10-03T06:14:00.000Z",
+      expected: "2026-10-03T06:16:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "l1-cancel",
+      line: "L1",
+      destination: "Lillestrøm",
+      aimed: "2026-10-03T06:40:00.000Z",
+      expected: "2026-10-03T06:40:00.000Z",
+      cancelled: true,
+    },
+    {
+      id: "l1-later",
+      line: "L1",
+      destination: "Lillestrøm",
+      aimed: "2026-10-03T07:10:00.000Z",
+      expected: "2026-10-03T07:10:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "bus-past",
+      line: "150",
+      destination: "Nationaltheatret",
+      aimed: "2026-10-03T05:30:00.000Z",
+      expected: "2026-10-03T05:30:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "bus-delay",
+      line: "150",
+      destination: "Nationaltheatret",
+      aimed: "2026-10-03T05:46:00.000Z",
+      expected: "2026-10-03T05:49:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "bus-cancel",
       line: "150",
       destination: "Nationaltheatret",
       aimed: "2026-10-03T06:05:00.000Z",
@@ -130,11 +174,19 @@ export const fixtureDepartures: DeparturesView = {
       cancelled: true,
     },
     {
-      id: "later",
-      line: "L1",
-      destination: "Lillestrøm",
-      aimed: "2026-10-03T06:20:00.000Z",
-      expected: "2026-10-03T06:20:00.000Z",
+      id: "bus-on",
+      line: "150",
+      destination: "Nationaltheatret",
+      aimed: "2026-10-03T06:22:00.000Z",
+      expected: "2026-10-03T06:22:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "bus-later",
+      line: "150",
+      destination: "Nationaltheatret",
+      aimed: "2026-10-03T06:45:00.000Z",
+      expected: "2026-10-03T06:45:00.000Z",
       cancelled: false,
     },
   ],
@@ -212,8 +264,7 @@ export function departureDisplay(departure: Departure): DepartureDisplay {
   return { time, delayLabel: null, cancelled: false };
 }
 
-/** Next upcoming departure and the two after it, across both filters. */
-export function selectDepartures(rows: Departure[], now: Date, limit = DEPARTURE_ROW_COUNT): Departure[] {
+function upcomingDepartures(rows: Departure[], now: Date): Departure[] {
   const cutoff = now.getTime();
   const seen = new Set<string>();
   return rows
@@ -222,8 +273,20 @@ export function selectDepartures(rows: Departure[], now: Date, limit = DEPARTURE
       seen.add(row.id);
       return true;
     })
-    .sort((left, right) => departureInstant(left) - departureInstant(right))
-    .slice(0, limit);
+    .sort((left, right) => departureInstant(left) - departureInstant(right));
+}
+
+/** Next three departures for L1, then the next three for bus 150. */
+export function selectDepartureLines(rows: Departure[], now: Date, limit = DEPARTURE_ROW_COUNT): LineDepartures[] {
+  const upcoming = upcomingDepartures(rows, now);
+  return LINE_ORDER.map((line) => {
+    const departures = upcoming.filter((row) => row.line === line).slice(0, limit);
+    return {
+      line,
+      destination: departures[0]?.destination ?? LINE_DESTINATION[line],
+      departures,
+    };
+  });
 }
 
 export function isDeparture(value: unknown): value is Departure {

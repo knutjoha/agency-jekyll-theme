@@ -6,7 +6,7 @@ import { FreshnessLine } from "@/components/hjem/FreshnessLine";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import type { Person, SoonItem, WeatherView } from "@/data/types";
 import { SOON_EMPTY } from "@/lib/calendar-view";
-import type { Departure } from "@/lib/departures";
+import type { LineDepartures } from "@/lib/departures";
 import type { EventPhase, HomeDinner, SectionId, SectionPhase } from "@/lib/home-cache";
 import type { OsloNow } from "@/lib/oslo";
 
@@ -113,7 +113,7 @@ export function HomeMobile({
   people: Person[];
   soon: SoonItem[];
   dinner?: HomeDinner | null;
-  departures: Departure[] | null;
+  departures: LineDepartures[] | null;
   phase?: Record<SectionId, SectionPhase>;
   updatedAt?: Record<SectionId, string | null>;
   waiting?: boolean;
@@ -219,7 +219,7 @@ export function HomeMobile({
       {departures ? (
         <DeparturesTile
           compact
-          rows={departures}
+          lines={departures}
           note={phase && updatedAt ? <FreshnessLine phase={phase.departures} updatedAt={updatedAt.departures} /> : null}
         />
       ) : (

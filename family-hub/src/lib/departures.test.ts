@@ -17,7 +17,7 @@ import {
   fixtureDepartures,
   getDepartures,
   l1Departures,
-  selectDepartures,
+  selectDepartureLines,
   type EstimatedCall,
 } from "./departures.ts";
 
@@ -138,27 +138,39 @@ test("delay is expected minus aimed, and a cancellation is Innstilt", () => {
   assert.deepEqual(departureDisplay(cancelled), { time: "09:07", delayLabel: "Innstilt", cancelled: true });
 });
 
-test("three rows are the next departures from both filters, sorted by expected time", () => {
+test("each line keeps its own next three departures", () => {
   const now = new Date("2026-10-15T07:40:00.000Z");
-  const rows = selectDepartures(
+  const board = selectDepartureLines(
     [
       { id: "past", line: "L1", destination: "Lillestrøm", aimed: "2026-10-15T07:30:00.000Z", expected: "2026-10-15T07:30:00.000Z", cancelled: false },
-      { id: "l1-late", line: "L1", destination: "Lillestrøm", aimed: "2026-10-15T08:10:00.000Z", expected: "2026-10-15T08:10:00.000Z", cancelled: false },
-      { id: "bus-first", line: "150", destination: "Nationaltheatret", aimed: "2026-10-15T07:50:00.000Z", expected: "2026-10-15T07:50:00.000Z", cancelled: false },
-      { id: "l1-next", line: "L1", destination: "Lillestrøm", aimed: "2026-10-15T08:00:00.000Z", expected: "2026-10-15T08:00:00.000Z", cancelled: false },
-      { id: "bus-third", line: "150", destination: "Nationaltheatret", aimed: "2026-10-15T08:05:00.000Z", expected: "2026-10-15T08:05:00.000Z", cancelled: true },
-      { id: "bus-first", line: "150", destination: "Nationaltheatret", aimed: "2026-10-15T07:50:00.000Z", expected: "2026-10-15T07:50:00.000Z", cancelled: false },
+      { id: "l1-a", line: "L1", destination: "Lillestrøm", aimed: "2026-10-15T08:00:00.000Z", expected: "2026-10-15T08:00:00.000Z", cancelled: false },
+      { id: "l1-b", line: "L1", destination: "Lillestrøm", aimed: "2026-10-15T08:20:00.000Z", expected: "2026-10-15T08:20:00.000Z", cancelled: false },
+      { id: "l1-c", line: "L1", destination: "Lillestrøm", aimed: "2026-10-15T08:40:00.000Z", expected: "2026-10-15T08:40:00.000Z", cancelled: true },
+      { id: "l1-d", line: "L1", destination: "Lillestrøm", aimed: "2026-10-15T09:00:00.000Z", expected: "2026-10-15T09:00:00.000Z", cancelled: false },
+      { id: "bus-a", line: "150", destination: "Nationaltheatret", aimed: "2026-10-15T07:50:00.000Z", expected: "2026-10-15T07:50:00.000Z", cancelled: false },
+      { id: "bus-b", line: "150", destination: "Nationaltheatret", aimed: "2026-10-15T08:05:00.000Z", expected: "2026-10-15T08:05:00.000Z", cancelled: true },
+      { id: "bus-a", line: "150", destination: "Nationaltheatret", aimed: "2026-10-15T07:50:00.000Z", expected: "2026-10-15T07:50:00.000Z", cancelled: false },
+      { id: "bus-c", line: "150", destination: "Nationaltheatret", aimed: "2026-10-15T08:25:00.000Z", expected: "2026-10-15T08:25:00.000Z", cancelled: false },
     ],
     now,
   );
-  assert.deepEqual(rows.map((row) => row.id), ["bus-first", "l1-next", "bus-third"]);
-  assert.equal(rows[2].cancelled, true);
+  assert.deepEqual(
+    board.map((line) => [line.line, line.departures.map((row) => row.id)]),
+    [
+      ["L1", ["l1-a", "l1-b", "l1-c"]],
+      ["150", ["bus-a", "bus-b", "bus-c"]],
+    ],
+  );
+  assert.equal(board[0].departures[2].cancelled, true);
 
-  const frozen = selectDepartures(fixtureDepartures.rows, SNAPSHOT_AT);
-  assert.deepEqual(frozen.map((row) => row.id), ["bus", "l1", "cancel"]);
-  assert.deepEqual(departureDisplay(frozen[0]), { time: "07:49", delayLabel: "+3 min", cancelled: false });
-  assert.equal(departureDisplay(frozen[1]).delayLabel, null);
-  assert.equal(departureDisplay(frozen[2]).delayLabel, "Innstilt");
+  const frozen = selectDepartureLines(fixtureDepartures.rows, SNAPSHOT_AT);
+  assert.deepEqual(frozen[0].departures.map((row) => row.id), ["l1-on", "l1-delay", "l1-cancel"]);
+  assert.equal(departureDisplay(frozen[0].departures[0]).delayLabel, null);
+  assert.deepEqual(departureDisplay(frozen[0].departures[1]), { time: "08:16", delayLabel: "+2 min", cancelled: false });
+  assert.deepEqual(departureDisplay(frozen[0].departures[2]), { time: "08:40", delayLabel: "Innstilt", cancelled: true });
+  assert.deepEqual(frozen[1].departures.map((row) => row.id), ["bus-delay", "bus-cancel", "bus-on"]);
+  assert.deepEqual(departureDisplay(frozen[1].departures[0]), { time: "07:49", delayLabel: "+3 min", cancelled: false });
+  assert.equal(departureDisplay(frozen[1].departures[1]).delayLabel, "Innstilt");
 });
 
 test("an Entur payload is filtered before it is cached", async () => {
