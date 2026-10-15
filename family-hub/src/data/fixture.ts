@@ -1,4 +1,4 @@
-import type { Dinner, Person, WeatherView } from "./types";
+import type { Person, WeatherView } from "./types";
 
 export const people: Person[] = [
   {
@@ -42,11 +42,6 @@ export const people: Person[] = [
     events: [],
   },
 ];
-
-export const dinner: Dinner = {
-  dish: "Ovnsbakt laks med poteter",
-  shoppingCount: 6,
-};
 
 export const ATTRIBUTION = "Stabekk · Yr / Meteorologisk institutt og NRK";
 

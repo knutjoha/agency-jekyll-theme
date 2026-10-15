@@ -1,10 +1,14 @@
 import { ShoppingBasket } from "lucide-react";
 import type { Dinner } from "@/data/types";
+import { DINNER_EMPTY_LABEL } from "@/lib/dinner/today";
 
 export function DinnerTile({ dinner }: { dinner: Dinner }) {
+  const empty = !dinner.dish;
+
   return (
     <section
       data-region="dinner"
+      data-empty={empty ? "true" : undefined}
       style={{
         width: "100%",
         height: 160,
@@ -38,10 +42,10 @@ export function DinnerTile({ dinner }: { dinner: Dinner }) {
           fontSize: 27,
           lineHeight: 1.1,
           fontWeight: 400,
-          color: "var(--text)",
+          color: empty ? "var(--text-muted)" : "var(--text)",
         }}
       >
-        {dinner.dish}
+        {empty ? DINNER_EMPTY_LABEL : dinner.dish}
       </div>
       <div
         style={{
@@ -53,31 +57,33 @@ export function DinnerTile({ dinner }: { dinner: Dinner }) {
           gap: 8,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 8,
-            padding: "7px 12px",
-            borderRadius: "var(--r-full)",
-            background: "var(--tile-3)",
-          }}
-        >
-          <ShoppingBasket size={17} color="var(--text-2)" />
-          <span
+        {empty || dinner.shoppingCount <= 0 ? null : (
+          <div
             style={{
-              fontFamily: "var(--font-body)",
-              fontSize: 14,
-              lineHeight: 1,
-              fontWeight: 400,
-              color: "var(--text-2)",
-              whiteSpace: "nowrap",
+              display: "flex",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 8,
+              padding: "7px 12px",
+              borderRadius: "var(--r-full)",
+              background: "var(--tile-3)",
             }}
           >
-            {dinner.shoppingCount} varer
-          </span>
-        </div>
+            <ShoppingBasket size={17} color="var(--text-2)" />
+            <span
+              style={{
+                fontFamily: "var(--font-body)",
+                fontSize: 14,
+                lineHeight: 1,
+                fontWeight: 400,
+                color: "var(--text-2)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {dinner.shoppingCount} varer
+            </span>
+          </div>
+        )}
       </div>
     </section>
   );
