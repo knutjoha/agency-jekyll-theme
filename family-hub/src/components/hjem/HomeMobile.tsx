@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { DeparturesTile } from "@/components/hjem/DeparturesTile";
 import { FreshnessLine } from "@/components/hjem/FreshnessLine";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import type { Person, SoonItem, WeatherView } from "@/data/types";
 import { SOON_EMPTY } from "@/lib/calendar-view";
+import type { LineDepartures } from "@/lib/departures";
 import type { EventPhase, HomeDinner, SectionId, SectionPhase } from "@/lib/home-cache";
 import type { OsloNow } from "@/lib/oslo";
 
@@ -101,6 +103,8 @@ export function HomeMobile({
   people,
   soon,
   dinner,
+  departures,
+  now,
   phase,
   updatedAt,
   waiting = false,
@@ -110,6 +114,8 @@ export function HomeMobile({
   people: Person[];
   soon: SoonItem[];
   dinner?: HomeDinner | null;
+  departures: LineDepartures[] | null;
+  now: Date;
   phase?: Record<SectionId, SectionPhase>;
   updatedAt?: Record<SectionId, string | null>;
   waiting?: boolean;
@@ -211,6 +217,37 @@ export function HomeMobile({
           {phase && updatedAt ? <FreshnessLine phase={phase.dinner} updatedAt={updatedAt.dinner} /> : null}
         </section>
       ) : null}
+
+      {departures ? (
+        <DeparturesTile
+          compact
+          lines={departures}
+          now={now}
+          note={phase && updatedAt ? <FreshnessLine phase={phase.departures} updatedAt={updatedAt.departures} /> : null}
+        />
+      ) : (
+        <section
+          data-region="departures"
+          data-state={!phase || phase.departures === "loading" || phase.departures === "updating" ? "loading" : phase.departures}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            padding: 13,
+            borderRadius: "var(--r-tile)",
+            background: "var(--tile)",
+          }}
+        >
+          {!phase || phase.departures === "loading" || phase.departures === "updating" ? (
+            <div className="sk-bone" style={{ width: "100%", height: 72 }} />
+          ) : (
+            <div style={{ fontFamily: "var(--font-body)", fontSize: 15, lineHeight: 1.3, color: "var(--text-muted)" }}>
+              {phase.departures === "offline" ? "Ingen nett" : "Fikk ikke hentet avgangene"}
+            </div>
+          )}
+          {phase && updatedAt ? <FreshnessLine phase={phase.departures} updatedAt={updatedAt.departures} /> : null}
+        </section>
+      )}
 
       <section
         data-region="soon"

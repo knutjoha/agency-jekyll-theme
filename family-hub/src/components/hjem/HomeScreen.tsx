@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { dinner as fixtureDinner } from "@/data/fixture";
 import { navHref } from "@/components/shell/navItems";
+import { DeparturesTile } from "@/components/hjem/DeparturesTile";
 import { DinnerTile } from "@/components/hjem/DinnerTile";
 import { FreshnessLine } from "@/components/hjem/FreshnessLine";
 import { HomeMobile } from "@/components/hjem/HomeMobile";
@@ -11,8 +12,9 @@ import { TodayTile } from "@/components/hjem/TodayTile";
 import { WeatherTile } from "@/components/hjem/WeatherTile";
 import { HallwayPage } from "@/components/shell/HallwayPage";
 import type { CalendarPayload, CalendarSource, Person, SoonItem, WeatherView } from "@/data/types";
+import { fixtureDepartures, selectDepartureLines, type LineDepartures } from "@/lib/departures";
 import { rollSoon, withEventPhases, type HomeDinner, type SectionId, type SectionPhase } from "@/lib/home-cache";
-import { meteogramNowHour, type OsloNow } from "@/lib/oslo";
+import { meteogramNowHour, SNAPSHOT_AT, type OsloNow } from "@/lib/oslo";
 import { useCalendar } from "@/lib/use-calendar";
 import { useHomeLive } from "@/lib/use-home-live";
 
@@ -20,6 +22,7 @@ const HOLD_LABEL: Record<SectionId, string> = {
   calendar: "Fikk ikke hentet kalenderen",
   weather: "Fikk ikke hentet været",
   dinner: "Fikk ikke hentet middagen",
+  departures: "Fikk ikke hentet avgangene",
 };
 
 function Hold({ region, phase, section }: { region: string; phase: SectionPhase; section: SectionId }) {
@@ -72,6 +75,8 @@ function HomeColumns({
   people,
   soon,
   dinner,
+  departures,
+  now,
   source,
   phase,
   updatedAt,
@@ -82,6 +87,8 @@ function HomeColumns({
   people: Person[] | null;
   soon: SoonItem[] | null;
   dinner: HomeDinner | null;
+  departures: LineDepartures[] | null;
+  now: Date;
   source: CalendarSource;
   phase: Record<SectionId, SectionPhase> | null;
   updatedAt: Record<SectionId, string | null> | null;
@@ -143,6 +150,11 @@ function HomeColumns({
         ) : (
           <Hold region="dinner" phase={phase?.dinner ?? "loading"} section="dinner" />
         )}
+        {departures ? (
+          <DeparturesTile lines={departures} now={now} note={note("departures")} />
+        ) : (
+          <Hold region="departures" phase={phase?.departures ?? "loading"} section="departures" />
+        )}
         {soon ? <SoonTile items={soon} note={note("calendar")} /> : <Hold region="soon" phase={phase?.calendar ?? "loading"} section="calendar" />}
       </div>
     </div>
@@ -165,7 +177,14 @@ function FrozenHome({
       initialWeather={initialWeather}
       initialNow={initialNow}
       mobile={(clock, weather) => (
-        <HomeMobile clock={clock} weather={weather} people={calendar.todayPeople} soon={calendar.soon ?? []} />
+        <HomeMobile
+          clock={clock}
+          weather={weather}
+          people={calendar.todayPeople}
+          soon={calendar.soon ?? []}
+          departures={selectDepartureLines(fixtureDepartures.rows, SNAPSHOT_AT)}
+          now={SNAPSHOT_AT}
+        />
       )}
     >
       {(clock) => (
@@ -176,6 +195,8 @@ function FrozenHome({
           people={calendar.todayPeople}
           soon={calendar.soon ?? []}
           dinner={{ dish: fixtureDinner.dish, shoppingCount: fixtureDinner.shoppingCount, planned: true }}
+          departures={selectDepartureLines(fixtureDepartures.rows, SNAPSHOT_AT)}
+          now={SNAPSHOT_AT}
           source={calendar.source}
           phase={null}
           updatedAt={null}
@@ -195,32 +216,42 @@ function LiveHome({ initialNow }: { initialNow: string }) {
       initialWeather={live.weather}
       initialNow={initialNow}
       externalWeather
-      mobile={(clock) => (
-        <HomeMobile
-          clock={clock}
-          weather={live.weather}
-          people={people ? withEventPhases(people, clock) : []}
-          soon={soon ?? []}
-          dinner={live.dinner}
-          phase={live.phase}
-          updatedAt={live.updatedAt}
-          waiting={!live.calendar}
-        />
-      )}
+      mobile={(clock) => {
+        const now = new Date();
+        return (
+          <HomeMobile
+            clock={clock}
+            weather={live.weather}
+            people={people ? withEventPhases(people, clock) : []}
+            soon={soon ?? []}
+            dinner={live.dinner}
+            departures={live.departures ? selectDepartureLines(live.departures.rows, now) : null}
+            now={now}
+            phase={live.phase}
+            updatedAt={live.updatedAt}
+            waiting={!live.calendar}
+          />
+        );
+      }}
     >
-      {(clock) => (
-        <HomeColumns
-          snapshot={false}
-          clock={clock}
-          weather={live.weather}
-          people={people}
-          soon={soon}
-          dinner={live.dinner}
-          source={live.calendar?.source ?? "fixture"}
-          phase={live.phase}
-          updatedAt={live.updatedAt}
-        />
-      )}
+      {(clock) => {
+        const now = new Date();
+        return (
+          <HomeColumns
+            snapshot={false}
+            clock={clock}
+            weather={live.weather}
+            people={people}
+            soon={soon}
+            dinner={live.dinner}
+            departures={live.departures ? selectDepartureLines(live.departures.rows, now) : null}
+            now={now}
+            source={live.calendar?.source ?? "fixture"}
+            phase={live.phase}
+            updatedAt={live.updatedAt}
+          />
+        );
+      }}
     </HallwayPage>
   );
 }

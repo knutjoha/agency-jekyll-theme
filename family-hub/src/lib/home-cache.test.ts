@@ -7,6 +7,7 @@ import {
   HOME_SNAPSHOT_VERSION,
   NO_DINNER_TODAY,
   SECTION_MAX_AGE_MS,
+  SECTION_REFRESH_MS,
   clearHomeSnapshot,
   dinnerForToday,
   eventPhase,
@@ -52,10 +53,12 @@ test("reads and writes a versioned snapshot without dropping the other sections"
   const store = memoryStore();
   writeHomeSection(store, "weather", fixtureWeather, now);
   writeHomeSection(store, "dinner", { dish: "Taco", shoppingCount: 2, planned: true }, now);
+  writeHomeSection(store, "departures", { rows: [{ id: "l1", line: "L1", destination: "Lillestrøm", aimed: "2026-10-15T09:10:00+02:00", expected: "2026-10-15T09:10:00+02:00", cancelled: false }] }, now);
   const snapshot = parseHomeSnapshot(store.getItem(HOME_SNAPSHOT_KEY));
   assert.equal(snapshot?.version, HOME_SNAPSHOT_VERSION);
   assert.equal(snapshot?.weather?.temperature, fixtureWeather.temperature);
   assert.equal(snapshot?.dinner?.dish, "Taco");
+  assert.equal(snapshot?.departures?.rows[0]?.destination, "Lillestrøm");
   assert.equal(snapshot?.calendar, null);
   clearHomeSnapshot(store);
   assert.equal(store.getItem(HOME_SNAPSHOT_KEY), null);
@@ -71,6 +74,7 @@ test("a corrupt or unknown snapshot is ignored", () => {
   assert.equal(visible.calendar.data, null);
   assert.equal(visible.weather.data, null);
   assert.equal(visible.dinner.data, null);
+  assert.equal(visible.departures.data, null);
 });
 
 test("max age marks calendar stale at 5 minutes, weather fresh until 30, and yesterday hidden", () => {
@@ -79,6 +83,9 @@ test("max age marks calendar stale at 5 minutes, weather fresh until 30, and yes
   assert.equal(sectionFreshness(meta(5), "dinner", now), "stale");
   assert.equal(sectionFreshness(meta(5), "weather", now), "fresh");
   assert.equal(sectionFreshness(meta(30), "weather", now), "stale");
+  assert.equal(sectionFreshness({ fetchedAt: new Date(now.getTime() - 89_000).toISOString(), osloDate: osloDateKey(now) }, "departures", now), "fresh");
+  assert.equal(sectionFreshness({ fetchedAt: new Date(now.getTime() - SECTION_MAX_AGE_MS.departures).toISOString(), osloDate: osloDateKey(now) }, "departures", now), "stale");
+  assert.equal(SECTION_REFRESH_MS.departures >= 30_000 && SECTION_REFRESH_MS.departures <= 60_000, true);
   assert.equal(sectionFreshness(meta(1, "2026-10-14"), "calendar", now), "wrong-day");
   assert.equal(SECTION_MAX_AGE_MS.weather > SECTION_MAX_AGE_MS.calendar, true);
 
@@ -93,9 +100,9 @@ test("max age marks calendar stale at 5 minutes, weather fresh until 30, and yes
 });
 
 test("resume refreshes every section and a hidden page does not", () => {
-  assert.deepEqual(sectionsToRefresh({ reason: "resume", hidden: false }), ["calendar", "weather", "dinner"]);
-  assert.deepEqual(sectionsToRefresh({ reason: "reconnect", hidden: false }), ["calendar", "weather", "dinner"]);
-  assert.deepEqual(sectionsToRefresh({ reason: "midnight", hidden: false }), ["calendar", "weather", "dinner"]);
+  assert.deepEqual(sectionsToRefresh({ reason: "resume", hidden: false }), ["calendar", "weather", "dinner", "departures"]);
+  assert.deepEqual(sectionsToRefresh({ reason: "reconnect", hidden: false }), ["calendar", "weather", "dinner", "departures"]);
+  assert.deepEqual(sectionsToRefresh({ reason: "midnight", hidden: false }), ["calendar", "weather", "dinner", "departures"]);
   assert.deepEqual(sectionsToRefresh({ reason: "interval", section: "weather", hidden: false }), ["weather"]);
   assert.deepEqual(sectionsToRefresh({ reason: "interval", section: "calendar", hidden: true }), []);
   assert.deepEqual(sectionsToRefresh({ reason: "resume", hidden: true }), []);
@@ -192,15 +199,30 @@ test("home sections load together, and one failure does not block the others", a
     if (url.includes("weather")) return new Response("no", { status: 503 });
     if (url.includes("calendar")) return Response.json(fixturePayload());
     if (url.includes("shopping")) return Response.json({ week: "2026-10-12", aisles: [{ items: [{ done: false }] }] });
+    if (url.includes("departures")) {
+      return Response.json({
+        rows: [
+          {
+            id: "l1",
+            line: "L1",
+            destination: "Lillestrøm",
+            aimed: "2026-10-15T09:10:00+02:00",
+            expected: "2026-10-15T09:12:00+02:00",
+            cancelled: false,
+          },
+        ],
+      });
+    }
     const days: { meal: { title: string } | null }[] = Array.from({ length: 7 }, () => ({ meal: null }));
     days[3] = { meal: { title: "Taco" } };
     return Response.json({ week: "2026-10-12", days });
   }, { now });
   const elapsed = Date.now() - started;
   assert.ok(elapsed < 160, `expected parallel load, took ${elapsed}ms`);
-  assert.equal(calls.length, 4);
+  assert.equal(calls.length, 5);
   assert.equal(result.calendar.ok, true);
   assert.equal(result.weather.ok, false);
   assert.equal(result.dinner.ok && result.dinner.data.dish, "Taco");
   assert.equal(result.dinner.ok && result.dinner.data.shoppingCount, 1);
+  assert.equal(result.departures.ok && result.departures.data.rows[0]?.destination, "Lillestrøm");
 });
