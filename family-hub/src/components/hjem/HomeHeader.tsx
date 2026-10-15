@@ -2,7 +2,15 @@ import type { WeatherView } from "@/data/types";
 import type { OsloNow } from "@/lib/oslo";
 import { WeatherIcon } from "@/components/hjem/Meteogram";
 
-export function HomeHeader({ clock, weather }: { clock: OsloNow; weather: WeatherView }) {
+export function HomeHeader({
+  clock,
+  weather,
+  pending = false,
+}: {
+  clock: OsloNow;
+  weather: WeatherView;
+  pending?: boolean;
+}) {
   return (
     <header
       data-region="header"
@@ -45,30 +53,46 @@ export function HomeHeader({ clock, weather }: { clock: OsloNow; weather: Weathe
           {clock.weekdayLine}
         </div>
         <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <WeatherIcon symbol={weather.headerSymbol} size={21} color="var(--text-2)" />
-          <div
-            style={{
-              fontFamily: "var(--font-data)",
-              fontSize: 20,
-              lineHeight: 1,
-              fontWeight: 400,
-              color: "var(--text)",
-            }}
-          >
-            {weather.temperature}°
-          </div>
-          <div
-            style={{
-              fontFamily: "var(--font-body)",
-              fontSize: 16,
-              lineHeight: 1,
-              fontWeight: 400,
-              color: "var(--text-muted)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {weather.summary}
-          </div>
+          {pending ? (
+            <div
+              style={{
+                fontFamily: "var(--font-body)",
+                fontSize: 16,
+                lineHeight: 1,
+                fontWeight: 400,
+                color: "var(--text-muted)",
+              }}
+            >
+              Henter været
+            </div>
+          ) : (
+            <>
+              <WeatherIcon symbol={weather.headerSymbol} size={21} color="var(--text-2)" />
+              <div
+                style={{
+                  fontFamily: "var(--font-data)",
+                  fontSize: 20,
+                  lineHeight: 1,
+                  fontWeight: 400,
+                  color: "var(--text)",
+                }}
+              >
+                {weather.temperature}°
+              </div>
+              <div
+                style={{
+                  fontFamily: "var(--font-body)",
+                  fontSize: 16,
+                  lineHeight: 1,
+                  fontWeight: 400,
+                  color: "var(--text-muted)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {weather.summary}
+              </div>
+            </>
+          )}
         </div>
       </div>
       <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 20, flexShrink: 0 }}>

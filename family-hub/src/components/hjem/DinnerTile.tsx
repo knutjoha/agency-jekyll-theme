@@ -1,13 +1,15 @@
+import type { ReactNode } from "react";
 import { ShoppingBasket } from "lucide-react";
 import type { Dinner } from "@/data/types";
 
-export function DinnerTile({ dinner }: { dinner: Dinner }) {
+export function DinnerTile({ dinner, note }: { dinner: Dinner; note?: ReactNode }) {
   return (
     <section
       data-region="dinner"
       style={{
         width: "100%",
-        height: 160,
+        minHeight: 160,
+        height: "auto",
         flexShrink: 0,
         boxSizing: "border-box",
         display: "flex",
@@ -31,6 +33,7 @@ export function DinnerTile({ dinner }: { dinner: Dinner }) {
       >
         MIDDAG I DAG
       </div>
+      {note}
       <div
         style={{
           width: "100%",

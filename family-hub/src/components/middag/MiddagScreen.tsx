@@ -8,6 +8,7 @@ import { HallwayPage } from "@/components/shell/HallwayPage";
 import type { DinnerMenu, GroceryAisle, MenuDay } from "@/data/types";
 import { addIsoDays } from "@/lib/calendar-view";
 import type { HallwayData } from "@/lib/hallway";
+import { publishHomeDinner } from "@/lib/home-cache";
 import { dinnerBody, writeJson, writeJsonResult } from "@/lib/persist-client";
 
 const SAVE_ERROR = "Fikk ikke lagret middagen. Prøv igjen.";
@@ -71,6 +72,11 @@ export function MiddagScreen({
   weekRef.current = week;
   daysRef.current = days;
   editorRef.current = editor;
+
+  useEffect(() => {
+    if (hallway.snapshot) return;
+    publishHomeDinner(week, days, aisles, new Date());
+  }, [hallway.snapshot, week, days, aisles]);
 
   useEffect(() => {
     if (!menuPersisted || weekQuery === null) return;

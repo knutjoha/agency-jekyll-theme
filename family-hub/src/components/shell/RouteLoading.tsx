@@ -63,6 +63,8 @@ export function RouteLoadingRoot({ children }: { children: ReactNode }) {
 
   const show = useCallback(
     (path: AppPath) => {
+      // Home paints from its own cache. A full-page skeleton would hide that.
+      if (path === "/") return;
       if (path === pathname && pendingRef.current === 0) return;
       window.clearTimeout(hideTimer.current);
       targetRef.current = path;
@@ -78,6 +80,7 @@ export function RouteLoadingRoot({ children }: { children: ReactNode }) {
 
   const markPending = useCallback(
     (path: AppPath, pending: boolean) => {
+      if (path === "/") return;
       if (pending) {
         pendingRef.current += 1;
         show(path);

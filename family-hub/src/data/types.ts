@@ -40,6 +40,8 @@ export type SoonItem = {
   dotToken: ColorToken;
   title: string;
   meta: string;
+  /** Europe/Oslo calendar day (YYYY-MM-DD), so Snart can roll over without a refetch. */
+  on?: string;
 };
 
 export type CalendarBlock =

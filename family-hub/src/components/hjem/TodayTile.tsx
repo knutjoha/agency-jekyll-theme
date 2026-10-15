@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { CalendarSource, Person } from "@/data/types";
 import { PersonRow } from "@/components/hjem/PersonRow";
 
@@ -5,10 +6,12 @@ export function TodayTile({
   people,
   numericDate,
   source,
+  note,
 }: {
   people: Person[];
   numericDate: string;
   source: CalendarSource;
+  note?: ReactNode;
 }) {
   return (
     <section
@@ -59,6 +62,7 @@ export function TodayTile({
           {numericDate}
         </div>
       </div>
+      {note}
       <div
         style={{
           flex: 1,

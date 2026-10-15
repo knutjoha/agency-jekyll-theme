@@ -1,7 +1,8 @@
+import type { ReactNode } from "react";
 import type { WeatherView } from "@/data/types";
 import { Meteogram } from "@/components/hjem/Meteogram";
 
-export function WeatherTile({ weather, nowHour }: { weather: WeatherView; nowHour: number }) {
+export function WeatherTile({ weather, nowHour, note }: { weather: WeatherView; nowHour: number; note?: ReactNode }) {
   return (
     <section
       data-region="weather"
@@ -98,6 +99,7 @@ export function WeatherTile({ weather, nowHour }: { weather: WeatherView; nowHou
           {weather.attribution}
         </div>
       </div>
+      {note}
       <Meteogram slots={weather.slots} nowHour={nowHour} />
     </section>
   );

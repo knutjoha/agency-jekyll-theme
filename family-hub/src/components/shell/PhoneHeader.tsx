@@ -2,7 +2,7 @@ import { WeatherIcon } from "@/components/hjem/Meteogram";
 import type { WeatherView } from "@/data/types";
 import type { OsloNow } from "@/lib/oslo";
 
-export function PhoneHeader({ clock, weather }: { clock: OsloNow; weather: WeatherView }) {
+export function PhoneHeader({ clock, weather }: { clock: OsloNow; weather: WeatherView | null }) {
   return (
     <header data-region="header" style={{ display: "flex", flexDirection: "column", gap: 5 }}>
       <div
@@ -38,31 +38,47 @@ export function PhoneHeader({ clock, weather }: { clock: OsloNow; weather: Weath
           minWidth: 0,
         }}
       >
-        <WeatherIcon symbol={weather.headerSymbol} size={16} color="var(--text-2)" />
-        <div
-          style={{
-            fontFamily: "var(--font-data)",
-            fontSize: 15,
-            lineHeight: 1,
-            fontWeight: 400,
-            color: "var(--text)",
-            flexShrink: 0,
-          }}
-        >
-          {weather.temperature}°
-        </div>
-        <div
-          style={{
-            fontFamily: "var(--font-body)",
-            fontSize: 13,
-            lineHeight: 1.2,
-            fontWeight: 400,
-            color: "var(--text-muted)",
-            minWidth: 0,
-          }}
-        >
-          {weather.summary}
-        </div>
+        {weather ? (
+          <>
+            <WeatherIcon symbol={weather.headerSymbol} size={16} color="var(--text-2)" />
+            <div
+              style={{
+                fontFamily: "var(--font-data)",
+                fontSize: 15,
+                lineHeight: 1,
+                fontWeight: 400,
+                color: "var(--text)",
+                flexShrink: 0,
+              }}
+            >
+              {weather.temperature}°
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-body)",
+                fontSize: 13,
+                lineHeight: 1.2,
+                fontWeight: 400,
+                color: "var(--text-muted)",
+                minWidth: 0,
+              }}
+            >
+              {weather.summary}
+            </div>
+          </>
+        ) : (
+          <div
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: 13,
+              lineHeight: 1.2,
+              fontWeight: 400,
+              color: "var(--text-muted)",
+            }}
+          >
+            Henter været
+          </div>
+        )}
       </div>
     </header>
   );

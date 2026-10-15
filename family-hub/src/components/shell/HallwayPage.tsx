@@ -1,29 +1,37 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { HomeHeader } from "@/components/hjem/HomeHeader";
 import { fixtureWeather } from "@/data/fixture";
 import type { WeatherView } from "@/data/types";
-import type { HallwayData } from "@/lib/hallway";
 import { SNAPSHOT_AT, formatOslo, type OsloNow } from "@/lib/oslo";
 
 export function HallwayPage({
   snapshot,
   initialWeather,
   initialNow,
+  externalWeather = false,
   children,
   mobile,
-}: HallwayData & {
+}: {
+  snapshot: boolean;
+  initialWeather: WeatherView | null;
+  initialNow: string;
+  /** When set, the parent owns weather fetches. The prop is the live value, including null. */
+  externalWeather?: boolean;
   children: (clock: OsloNow, weather: WeatherView) => ReactNode;
   mobile?: (clock: OsloNow, weather: WeatherView) => ReactNode;
 }) {
   const [now, setNow] = useState(() => (snapshot ? SNAPSHOT_AT : new Date(initialNow)));
-  const [weather, setWeather] = useState<WeatherView>(snapshot ? fixtureWeather : initialWeather);
+  const [internalWeather, setInternalWeather] = useState<WeatherView | null>(snapshot ? fixtureWeather : initialWeather);
+  const sourceRef = useRef(initialWeather?.source);
+  const weather = externalWeather ? initialWeather : snapshot ? fixtureWeather : internalWeather;
+  sourceRef.current = weather?.source;
 
   useEffect(() => {
     if (snapshot) {
       setNow(SNAPSHOT_AT);
-      setWeather(fixtureWeather);
+      setInternalWeather(fixtureWeather);
       return;
     }
 
@@ -42,26 +50,48 @@ export function HallwayPage({
   }, [snapshot]);
 
   useEffect(() => {
-    if (snapshot) return;
+    if (snapshot || externalWeather) return;
     let cancelled = false;
+    let interval = 0;
+
     const pull = async () => {
       try {
-        const response = await fetch("/api/weather");
-        if (!response.ok) throw new Error(String(response.status));
+        const response = await fetch("/api/weather", { cache: "no-store" });
+        if (!response.ok) return;
         const next = (await response.json()) as WeatherView;
-        if (!cancelled && next.slots?.length === 8) setWeather(next);
+        if (!cancelled && next.slots?.length === 8) setInternalWeather(next);
       } catch {
-        if (!cancelled) setWeather(fixtureWeather);
+        // Keep the last forecast. A miss must not replace today's weather with the fixture.
       }
     };
-    const interval = window.setInterval(pull, weather.source === "fixture" ? 60_000 : 10 * 60_000);
+
+    const arm = () => {
+      window.clearInterval(interval);
+      interval = window.setInterval(pull, sourceRef.current === "fixture" ? 60_000 : 10 * 60_000);
+    };
+
+    void pull().finally(() => {
+      if (!cancelled) arm();
+    });
+
+    const onWake = () => {
+      if (!document.hidden) void pull();
+    };
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("online", onWake);
+    window.addEventListener("focus", onWake);
+
     return () => {
       cancelled = true;
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("online", onWake);
+      window.removeEventListener("focus", onWake);
     };
-  }, [snapshot, weather.source]);
+  }, [snapshot, externalWeather]);
 
   const clock = formatOslo(now);
+  const shown = weather ?? fixtureWeather;
 
   return (
     <div
@@ -81,10 +111,10 @@ export function HallwayPage({
       }}
     >
       <div className="only-wide">
-        <HomeHeader clock={clock} weather={weather} />
-        {children(clock, weather)}
+        <HomeHeader clock={clock} weather={shown} pending={weather == null} />
+        {children(clock, shown)}
       </div>
-      {mobile ? <div className="only-phone">{mobile(clock, weather)}</div> : null}
+      {mobile ? <div className="only-phone">{mobile(clock, shown)}</div> : null}
     </div>
   );
 }
