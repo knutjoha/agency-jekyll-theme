@@ -172,6 +172,7 @@ export function DinnerEditor({
             />
             <button
               type="button"
+              className="pill-ghost"
               disabled={draft.saving}
               onClick={() =>
                 onChange({
@@ -179,7 +180,7 @@ export function DinnerEditor({
                   ingredients: draft.ingredients.filter((row) => row.id !== ingredient.id),
                 })
               }
-              style={ghostPill}
+              style={pillBase}
             >
               Fjern
             </button>
@@ -187,6 +188,7 @@ export function DinnerEditor({
         ))}
         <button
           type="button"
+          className="pill-ghost"
           disabled={draft.saving}
           onClick={() =>
             onChange({
@@ -194,7 +196,7 @@ export function DinnerEditor({
               ingredients: [...draft.ingredients, { id: crypto.randomUUID(), name: "", amount: "" }],
             })
           }
-          style={{ ...ghostPill, alignSelf: "flex-start" }}
+          style={{ ...pillBase, alignSelf: "flex-start" }}
         >
           Legg til ingrediens
         </button>
@@ -205,10 +207,10 @@ export function DinnerEditor({
         </div>
       ) : null}
       <div style={{ display: "flex", flexDirection: "row", justifyContent: "flex-end", gap: 8 }}>
-        <button type="button" onClick={onClose} style={ghostPill}>
+        <button type="button" className="pill-ghost" onClick={onClose} style={pillBase}>
           Avbryt
         </button>
-        <button type="submit" disabled={draft.saving} style={{ ...savePill, opacity: draft.saving ? 0.6 : 1 }}>
+        <button type="submit" className="pill-primary" disabled={draft.saving} style={{ ...pillBase, opacity: draft.saving ? 0.6 : 1 }}>
           Lagre
         </button>
       </div>
@@ -220,7 +222,7 @@ export function DinnerEditor({
       <div id={`dinner-editor-title-${variant}`} style={headingStyle}>
         {weekday}
       </div>
-      <button type="button" onClick={onClose} style={ghostPill}>
+      <button type="button" className="pill-ghost" onClick={onClose} style={pillBase}>
         Lukk
       </button>
     </div>
@@ -343,16 +345,4 @@ const pillBase = {
   lineHeight: "normal",
   fontWeight: 400,
   whiteSpace: "nowrap" as const,
-};
-
-const ghostPill = {
-  ...pillBase,
-  background: "var(--tile-3)",
-  color: "var(--text-2)",
-};
-
-const savePill = {
-  ...pillBase,
-  background: "var(--accent)",
-  color: "var(--ink)",
 };
