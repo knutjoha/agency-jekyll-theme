@@ -174,6 +174,7 @@ export function upcomingSoon(events: CalendarEventInput[], now: Date): SoonItem[
         dotToken: calendarLane(placed.lanes[0] ?? "family").colorToken,
         title: placed.title,
         meta: soonMeta(placed.lanes, time, days),
+        on: dateIso,
       },
     });
   }

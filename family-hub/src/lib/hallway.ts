@@ -17,13 +17,17 @@ export async function loadHallway(
 ): Promise<HallwayData> {
   const params = await searchParams;
   const snapshot = params.snapshot === "1";
-  const initialWeather = snapshot ? fixtureWeather : (await getWeather()).view;
-  const initialCalendar =
-    snapshot || !options?.includeCalendar ? fixturePayload() : await getCalendar();
+  const now = new Date();
+  // Weather and calendar do not depend on each other. The Yr search still has to
+  // finish before the forecast request, because the forecast URL comes from it.
+  const [initialWeather, initialCalendar] = await Promise.all([
+    snapshot ? Promise.resolve(fixtureWeather) : getWeather(now).then((result) => result.view),
+    snapshot || !options?.includeCalendar ? Promise.resolve(fixturePayload()) : getCalendar({ now }),
+  ]);
   return {
     snapshot,
     initialWeather,
-    initialNow: new Date().toISOString(),
+    initialNow: now.toISOString(),
     initialCalendar,
   };
 }

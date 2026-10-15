@@ -1,7 +1,8 @@
+import type { ReactNode } from "react";
 import type { SoonItem } from "@/data/types";
 import { SOON_EMPTY } from "@/lib/calendar-view";
 
-export function SoonTile({ items }: { items: SoonItem[] }) {
+export function SoonTile({ items, note }: { items: SoonItem[]; note?: ReactNode }) {
   return (
     <section
       data-region="soon"
@@ -37,6 +38,7 @@ export function SoonTile({ items }: { items: SoonItem[] }) {
         >
           Snart
         </div>
+        {note}
       </div>
       <div
         style={{

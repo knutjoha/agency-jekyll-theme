@@ -1,14 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { FreshnessLine } from "@/components/hjem/FreshnessLine";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
-import type { CalendarEvent, Person, SoonItem, WeatherView } from "@/data/types";
+import type { Person, SoonItem, WeatherView } from "@/data/types";
 import { SOON_EMPTY } from "@/lib/calendar-view";
+import type { EventPhase, HomeDinner, SectionId, SectionPhase } from "@/lib/home-cache";
 import type { OsloNow } from "@/lib/oslo";
 
-function eventLine(events: CalendarEvent[]): string {
+function eventLine(events: { time: string | null; title: string; phase?: EventPhase }[]): string {
   return events
-    .map((event) => (event.time ? `${event.time} ${event.title}` : event.title))
+    .map((event) => {
+      const label = event.time ? `${event.time} ${event.title}` : event.title;
+      if (event.phase === "now" && event.time) return `${label} · nå`;
+      if (event.phase === "done") return `${label} · ferdig`;
+      return label;
+    })
     .join(" · ");
 }
 
@@ -93,11 +100,19 @@ export function HomeMobile({
   weather,
   people,
   soon,
+  dinner,
+  phase,
+  updatedAt,
+  waiting = false,
 }: {
   clock: OsloNow;
-  weather: WeatherView;
+  weather: WeatherView | null;
   people: Person[];
   soon: SoonItem[];
+  dinner?: HomeDinner | null;
+  phase?: Record<SectionId, SectionPhase>;
+  updatedAt?: Record<SectionId, string | null>;
+  waiting?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const rows = previewSoon(soon, expanded);
@@ -147,12 +162,55 @@ export function HomeMobile({
           {clock.numericDate}
         </div>
       </div>
+      {phase && updatedAt ? <FreshnessLine phase={phase.calendar} updatedAt={updatedAt.calendar} /> : null}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
-        {people.map((person) => (
-          <PersonCard key={person.id} person={person} />
-        ))}
+        {waiting ? (
+          <div className="sk-bone" data-region="today" data-state="loading" style={{ width: "100%", height: 72 }} />
+        ) : (
+          people.map((person) => <PersonCard key={person.id} person={person} />)
+        )}
       </div>
+
+      {dinner !== undefined ? (
+        <section
+          data-region="dinner"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            padding: 13,
+            borderRadius: "var(--r-tile)",
+            background: "var(--tile)",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: 11,
+              lineHeight: 1,
+              letterSpacing: 1.6,
+              color: "var(--text-muted)",
+            }}
+          >
+            MIDDAG I DAG
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--font-heading)",
+              fontSize: 18,
+              lineHeight: 1.2,
+              color: "var(--text)",
+            }}
+          >
+            {dinner ? dinner.dish : "Henter middagen"}
+          </div>
+          {dinner ? (
+            <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>{dinner.shoppingCount} varer</div>
+          ) : null}
+          {phase && updatedAt ? <FreshnessLine phase={phase.dinner} updatedAt={updatedAt.dinner} /> : null}
+        </section>
+      ) : null}
 
       <section
         data-region="soon"

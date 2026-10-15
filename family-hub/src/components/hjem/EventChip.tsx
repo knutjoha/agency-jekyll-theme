@@ -1,8 +1,12 @@
 import type { CalendarEvent } from "@/data/types";
+import type { EventPhase } from "@/lib/home-cache";
 
-export function EventChip({ event }: { event: CalendarEvent }) {
+export function EventChip({ event }: { event: CalendarEvent & { phase?: EventPhase } }) {
+  const phase = event.phase;
+  const label = phase === "now" && event.time ? "nå" : phase === "done" ? "ferdig" : null;
   return (
     <div
+      data-phase={phase ?? "upcoming"}
       style={{
         display: "flex",
         flexDirection: "column",
@@ -13,6 +17,8 @@ export function EventChip({ event }: { event: CalendarEvent }) {
         flexShrink: 1,
         minWidth: 0,
         maxWidth: "100%",
+        opacity: phase === "done" ? 0.55 : 1,
+        boxShadow: phase === "now" ? "inset 2px 0 0 var(--accent)" : undefined,
       }}
     >
       <div
@@ -41,6 +47,19 @@ export function EventChip({ event }: { event: CalendarEvent }) {
       >
         {event.title}
       </div>
+      {label ? (
+        <div
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 12,
+            lineHeight: 1,
+            fontWeight: 400,
+            color: phase === "now" ? "var(--accent)" : "var(--text-muted)",
+          }}
+        >
+          {label}
+        </div>
+      ) : null}
     </div>
   );
 }
