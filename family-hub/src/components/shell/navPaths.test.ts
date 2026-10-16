@@ -2,11 +2,12 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { appPathFromHref, isAppPath } from "./navPaths.ts";
 
-test("the four hallway routes are in-app pages", () => {
+test("the five hallway routes are in-app pages", () => {
   assert.equal(isAppPath("/"), true);
   assert.equal(isAppPath("/kalender"), true);
   assert.equal(isAppPath("/todo"), true);
   assert.equal(isAppPath("/middag"), true);
+  assert.equal(isAppPath("/verdi"), true);
   assert.equal(isAppPath("/privacy"), false);
   assert.equal(isAppPath("/kalender/extra"), false);
 });
