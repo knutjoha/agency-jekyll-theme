@@ -143,6 +143,7 @@ export type WeatherSymbol =
   | "cloud-rain"
   | "cloud-drizzle"
   | "cloud-sun"
+  | "sun"
   | "cloud"
   | "cloud-moon"
   | "moon";
@@ -155,11 +156,27 @@ export type MeteogramSlot = {
   barPx: number;
 };
 
+export type WeatherDayPartId = "morgen" | "formiddag" | "ettermiddag" | "kveld";
+
+export type WeatherDayPart = {
+  id: WeatherDayPartId;
+  name: string;
+  startHour: number;
+  endHour: number;
+  symbol: WeatherSymbol | null;
+  precipitating: boolean;
+  condition: string;
+};
+
 export type WeatherView = {
   temperature: number;
   headerSymbol: WeatherSymbol;
   summary: string;
   precipLabel: string;
+  dayLow: number;
+  dayHigh: number;
+  dayPrecipMm: number;
+  parts: WeatherDayPart[];
   slots: MeteogramSlot[];
   attribution: string;
   source: "yr" | "fixture";

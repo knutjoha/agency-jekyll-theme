@@ -363,8 +363,32 @@ body {
   padding: 28px;
 }
 
+.weather-tile {
+  container-type: inline-size;
+  container-name: weather;
+}
+
+.weather-parts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+@container weather (max-width: 560px) {
+  .weather-parts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .weather-parts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .sk-weather {
-  min-height: 180px;
+  min-height: 260px;
 }
 
 .sk-dinner {

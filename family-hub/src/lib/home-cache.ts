@@ -1,4 +1,4 @@
-import type { CalendarPayload, SoonItem, WeatherSymbol, WeatherView } from "../data/types";
+import type { CalendarPayload, SoonItem, WeatherDayPart, WeatherSymbol, WeatherView } from "../data/types";
 import { isCalendarPayload, mondayOf } from "./calendar-view";
 import { isDeparturesView, type DeparturesView } from "./departures";
 import { formatOslo, osloDateKey, osloMidnightUtc, osloParts } from "./oslo";
@@ -83,10 +83,29 @@ const WEATHER_SYMBOLS = new Set<WeatherSymbol>([
   "cloud-rain",
   "cloud-drizzle",
   "cloud-sun",
+  "sun",
   "cloud",
   "cloud-moon",
   "moon",
 ]);
+
+const DAY_PART_IDS = new Set(["morgen", "formiddag", "ettermiddag", "kveld"]);
+
+function isWeatherDayPart(value: unknown): value is WeatherDayPart {
+  if (!value || typeof value !== "object") return false;
+  const part = value as WeatherDayPart;
+  return (
+    DAY_PART_IDS.has(part.id) &&
+    typeof part.name === "string" &&
+    typeof part.startHour === "number" &&
+    Number.isFinite(part.startHour) &&
+    typeof part.endHour === "number" &&
+    Number.isFinite(part.endHour) &&
+    typeof part.condition === "string" &&
+    typeof part.precipitating === "boolean" &&
+    (part.symbol === null || WEATHER_SYMBOLS.has(part.symbol))
+  );
+}
 
 const RELATIVE_LABEL = /^(i dag|i morgen|om \d+ dager)$/;
 
@@ -154,8 +173,17 @@ export function isWeatherView(value: unknown): value is WeatherView {
     WEATHER_SYMBOLS.has(weather.headerSymbol) &&
     typeof weather.summary === "string" &&
     typeof weather.precipLabel === "string" &&
+    typeof weather.dayLow === "number" &&
+    Number.isFinite(weather.dayLow) &&
+    typeof weather.dayHigh === "number" &&
+    Number.isFinite(weather.dayHigh) &&
+    typeof weather.dayPrecipMm === "number" &&
+    Number.isFinite(weather.dayPrecipMm) &&
     typeof weather.attribution === "string" &&
     (weather.source === "yr" || weather.source === "fixture") &&
+    Array.isArray(weather.parts) &&
+    weather.parts.length === 4 &&
+    weather.parts.every(isWeatherDayPart) &&
     Array.isArray(weather.slots) &&
     weather.slots.length === 8
   );

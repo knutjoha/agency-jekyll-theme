@@ -1,6 +1,7 @@
-import { ATTRIBUTION, fixtureWeather } from "@/data/fixture";
-import type { MeteogramSlot, WeatherSymbol, WeatherView } from "@/data/types";
-import { osloDateKey, osloParts } from "@/lib/oslo";
+import { ATTRIBUTION, fixtureWeather } from "../data/fixture";
+import type { MeteogramSlot, WeatherDayPart, WeatherSymbol, WeatherView } from "../data/types";
+import { osloDateKey, osloParts } from "./oslo";
+import { formatMm } from "./weather-format";
 
 const YR_ORIGIN = "https://www.yr.no";
 
@@ -11,6 +12,14 @@ export const YR_USER_AGENT =
   "FamilyHub/1.0 (+https://github.com/knutjoha/agency-jekyll-theme)";
 
 const SLOT_HOURS = [8, 10, 12, 14, 16, 18, 20, 22];
+const SHOW_MM_FROM = 0.1;
+
+export const DAY_PARTS = [
+  { id: "morgen", name: "Morgen", startHour: 8, endHour: 11 },
+  { id: "formiddag", name: "Formiddag", startHour: 12, endHour: 14 },
+  { id: "ettermiddag", name: "Ettermiddag", startHour: 15, endHour: 18 },
+  { id: "kveld", name: "Kveld", startHour: 19, endHour: 22 },
+] as const;
 
 type MetSeries = {
   time: string;
@@ -81,13 +90,64 @@ export function mapSymbol(code: string): SymbolMapping {
   return { symbol: "cloud", precipitating: false, condition: "Skyet" };
 }
 
+/** Tile-only sky words: Sol / Klart instead of Klarvær. Header still uses mapSymbol. */
+export function mapDayPartSymbol(code: string): SymbolMapping {
+  const mapped = mapSymbol(code);
+  const normalized = code.toLowerCase();
+  if (!normalized.includes("clearsky")) return mapped;
+  const night = normalized.includes("_night") || normalized.includes("polartwilight");
+  return night
+    ? { symbol: "moon", precipitating: false, condition: "Klart" }
+    : { symbol: "sun", precipitating: false, condition: "Sol" };
+}
+
 export function precipBarPx(precipMm: number): number {
   if (precipMm < 0.05) return 0;
   return Math.min(48, Math.max(4, Math.round(precipMm * 16)));
 }
 
-function formatMm(value: number): string {
-  return (Math.round(value * 10) / 10).toFixed(1).replace(".", ",");
+function partCondition(mapped: SymbolMapping, precipMm: number): string {
+  if (mapped.condition === "Yr") return "Yr";
+  if (mapped.precipitating && precipMm >= SHOW_MM_FROM) {
+    return `${mapped.condition} ${formatMm(precipMm)} mm`;
+  }
+  return mapped.condition;
+}
+
+function bucketDayParts(points: HourPoint[]): WeatherDayPart[] {
+  return DAY_PARTS.map((window) => {
+    const inWindow = points.filter((point) => point.hour >= window.startHour && point.hour <= window.endHour);
+    if (inWindow.length === 0) {
+      return {
+        id: window.id,
+        name: window.name,
+        startHour: window.startHour,
+        endHour: window.endHour,
+        symbol: null,
+        precipitating: false,
+        condition: "",
+      };
+    }
+
+    const precipMm = inWindow.reduce((total, point) => total + point.precipMm, 0);
+    const midpoint = (window.startHour + window.endHour) / 2;
+    const representative =
+      precipMm >= SHOW_MM_FROM
+        ? inWindow.reduce((best, point) => (point.precipMm > best.precipMm ? point : best))
+        : inWindow.reduce((best, point) =>
+            Math.abs(point.hour - midpoint) < Math.abs(best.hour - midpoint) ? point : best,
+          );
+    const mapped = mapDayPartSymbol(representative.symbolCode);
+    return {
+      id: window.id,
+      name: window.name,
+      startHour: window.startHour,
+      endHour: window.endHour,
+      symbol: mapped.symbol,
+      precipitating: mapped.precipitating,
+      condition: partCondition(mapped, precipMm),
+    };
+  });
 }
 
 function symbolCodeOf(entry: MetSeries): string {
@@ -166,6 +226,10 @@ export function buildWeather(series: MetSeries[], now: Date): WeatherView {
       : sum > 0
         ? `${formatMm(sum)} mm i dag`
         : "0 mm",
+    dayLow: low,
+    dayHigh: high,
+    dayPrecipMm: points.reduce((total, point) => total + point.precipMm, 0),
+    parts: bucketDayParts(points),
     slots,
     attribution: ATTRIBUTION,
     source: "yr",
