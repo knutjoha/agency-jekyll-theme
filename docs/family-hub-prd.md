@@ -167,7 +167,7 @@ The jobs below are the full set we heard. v1 only builds the five features in se
 - **Reading school messages automatically.** In v1, forms and messages are entered or forwarded by a parent. We do not connect directly to school platforms.
 - **Finances, budgeting and payments.** Knut owns the finances, but tracking money is a separate, sensitive area, and it does not belong on a shared wall screen.
 - **Health records, sizes, milestones.** We do not have the data, and it is sensitive.
-- **Chore assignment and rewards.** We do not know how chores are split today. See open questions.
+- **Chore assignment and rewards.** Parked for v1. Un-parked 16.10.2026 as v1.1 Verdi — see §5.8 and [allowance-prd.md](allowance-prd.md).
 - **Home maintenance projects and build tracking.** Recurring maintenance deadlines can live under renewals. Project management does not.
 - **Full trip planning (bookings, packing lists, itineraries).** v1 covers dates, holidays and who is going. Nothing more.
 - **Messaging or chat between family members.** The family already has ways to talk to each other.
@@ -227,7 +227,11 @@ These were in the first draft and are parked until the five features are in dail
 - Renewal tracking (skattemelding, EU-kontroll, insurance, passports) and birthday reminders. A birthday or a deadline can be a calendar event or a todo if someone enters it.
 - School forms as their own object. A form that needs a reply can be a todo.
 - Kid logins.
-- Automatic reading of school messages, calendar feeds from clubs, chores, finances, health records, trip planning and traditions.
+- Automatic reading of school messages, calendar feeds from clubs, finances, health records, trip planning and traditions. Chores were on this list; they moved to v1.1 in §5.8.
+
+### 5.8 v1.1 — Verdi (un-parked 16.10.2026)
+
+Chore assignment and rewards were parked in §4.4 and §5.7. They are now v1.1: a fifth nav item, route `/verdi`, label **Verdi**. Spec: [allowance-prd.md](allowance-prd.md). The three daughters are Amelia, Maja and Hedda. Ulla Marie is the mother, not a daughter. This does not change the Oct 3 v1 five, calendar write rules, or the dinner schema.
 
 ## 6. Context of use
 
@@ -269,7 +273,7 @@ We will know v1 works if, after four to six weeks of use:
 These are the questions whose answers would change the PRD.
 
 1. **Ulla Marie's role and work.** Her work pattern, how she wants to receive information, any quiet hours, and which household areas she owns. Without this, half the primary users are designed around guesses.
-2. **Chore split.** How are household tasks shared today, and should the app track them at all? This decides whether chores belong in v1 or later.
+2. **Chore split.** Answered 16.10.2026: yes, as v1.1 Verdi. Daughters Amelia, Maja and Hedda. Ulla Marie is the mother. Spec: [allowance-prd.md](allowance-prd.md).
 3. **Who drives.** Is there a usual pattern for which parent covers which activities or days, or is it decided week by week? Do other families in the clubs share driving?
 4. **Dietary needs beyond Knut's.** Does anyone else have allergies, intolerances or strong preferences? This affects meal planning and the grocery list.
 5. **Kids' logins.** Should Amelia, Hedda and Maja have their own logins and phone views, or only use the shared iPads? Is the answer different for Maja at 11 than for the twins at 13?
