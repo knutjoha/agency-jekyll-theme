@@ -14,7 +14,7 @@ import { HallwayPage } from "@/components/shell/HallwayPage";
 import type { CalendarPayload, CalendarSource, Person, SoonItem, WeatherView } from "@/data/types";
 import { fixtureDepartures, selectDepartureLines, type LineDepartures } from "@/lib/departures";
 import { rollSoon, withEventPhases, type HomeDinner, type SectionId, type SectionPhase } from "@/lib/home-cache";
-import { meteogramNowHour, SNAPSHOT_AT, type OsloNow } from "@/lib/oslo";
+import { SNAPSHOT_AT, type OsloNow } from "@/lib/oslo";
 import { useCalendar } from "@/lib/use-calendar";
 import { useHomeLive } from "@/lib/use-home-live";
 
@@ -32,10 +32,10 @@ function Hold({ region, phase, section }: { region: string; phase: SectionPhase;
       data-region={region}
       data-state={waiting ? "loading" : phase}
       aria-busy={waiting}
-      className="sk-tile"
+      className={region === "weather" ? "sk-tile sk-weather" : "sk-tile"}
       style={{
         width: "100%",
-        minHeight: 120,
+        minHeight: region === "weather" ? 200 : 120,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
@@ -127,7 +127,7 @@ function HomeColumns({
           <Hold region="today" phase={phase?.calendar ?? "loading"} section="calendar" />
         )}
         {weather ? (
-          <WeatherTile weather={weather} nowHour={meteogramNowHour(clock.hour)} note={note("weather")} />
+          <WeatherTile weather={weather} note={note("weather")} />
         ) : (
           <Hold region="weather" phase={phase?.weather ?? "loading"} section="weather" />
         )}

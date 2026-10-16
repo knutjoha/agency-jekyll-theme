@@ -1,21 +1,129 @@
 import type { ReactNode } from "react";
-import type { WeatherView } from "@/data/types";
-import { Meteogram } from "@/components/hjem/Meteogram";
+import type { WeatherDayPart, WeatherView } from "@/data/types";
+import { WeatherIcon } from "@/components/hjem/Meteogram";
+import { dayPartRangeLabel, weatherTileStats } from "@/lib/weather-format";
 
-export function WeatherTile({ weather, nowHour, note }: { weather: WeatherView; nowHour: number; note?: ReactNode }) {
+function partIconColor(part: WeatherDayPart): string {
+  if (part.symbol === "sun") return "var(--accent)";
+  if (part.precipitating) return "var(--rain)";
+  return "var(--text-2)";
+}
+
+function DayPartCard({ part, compact }: { part: WeatherDayPart; compact: boolean }) {
+  const iconSize = compact ? 26 : 30;
+  return (
+    <article
+      data-part={part.id}
+      style={{
+        minWidth: 0,
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: compact ? 6 : 7,
+        padding: compact ? "12px 8px" : "16px 10px",
+        borderRadius: "var(--r-nested)",
+        background: "var(--tile-2)",
+        textAlign: "center",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: compact ? 8 : 10,
+        }}
+      >
+        {part.symbol ? (
+          <WeatherIcon symbol={part.symbol} size={iconSize} color={partIconColor(part)} />
+        ) : (
+          <div style={{ width: iconSize, height: iconSize }} />
+        )}
+        {part.temperature != null ? (
+          <div
+            data-part-temp=""
+            style={{
+              fontFamily: "var(--font-data)",
+              fontSize: compact ? 22 : 26,
+              lineHeight: 1,
+              fontWeight: 400,
+              color: "var(--text)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {part.temperature}°
+          </div>
+        ) : null}
+      </div>
+      <div
+        style={{
+          fontFamily: "var(--font-heading)",
+          fontSize: compact ? 15 : 16,
+          lineHeight: 1.1,
+          fontWeight: 400,
+          color: "var(--text)",
+        }}
+      >
+        {part.name}
+      </div>
+      <div
+        style={{
+          fontFamily: "var(--font-data)",
+          fontSize: compact ? 11 : 12,
+          lineHeight: 1.2,
+          fontWeight: 400,
+          color: "var(--text-muted)",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {dayPartRangeLabel(part.startHour, part.endHour)}
+      </div>
+      {part.condition ? (
+        <div
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: compact ? 12 : 13,
+            lineHeight: 1.2,
+            fontWeight: 400,
+            color: "var(--text-muted)",
+          }}
+        >
+          {part.condition}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
+export function WeatherTile({
+  weather,
+  note,
+  compact = false,
+}: {
+  weather: WeatherView;
+  note?: ReactNode;
+  compact?: boolean;
+}) {
+  const stats = weatherTileStats(weather.dayLow, weather.dayHigh, weather.dayPrecipMm);
+
   return (
     <section
       data-region="weather"
+      data-weather-source={weather.source}
+      className="weather-tile"
       style={{
         width: "100%",
-        minHeight: 180,
+        minHeight: compact ? 0 : 180,
         height: "auto",
         flexShrink: 0,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",
-        gap: 12,
-        padding: 24,
+        gap: compact ? 12 : 14,
+        padding: compact ? 16 : 24,
         borderRadius: "var(--r-tile)",
         background: "var(--tile)",
       }}
@@ -34,14 +142,15 @@ export function WeatherTile({ weather, nowHour, note }: { weather: WeatherView; 
             display: "flex",
             flexDirection: "row",
             alignItems: "center",
-            gap: 12,
+            gap: 10,
             minWidth: 0,
+            flexWrap: "wrap",
           }}
         >
           <div
             style={{
               fontFamily: "var(--font-heading)",
-              fontSize: 22,
+              fontSize: compact ? 20 : 22,
               lineHeight: 1,
               fontWeight: 400,
               color: "var(--text)",
@@ -51,38 +160,22 @@ export function WeatherTile({ weather, nowHour, note }: { weather: WeatherView; 
             Været i dag
           </div>
           <div
+            data-weather-stats=""
             style={{
               display: "flex",
-              flexDirection: "row",
               alignItems: "center",
-              gap: 7,
-              padding: "6px 12px",
+              padding: compact ? "5px 10px" : "6px 12px",
               borderRadius: "var(--r-full)",
               background: "var(--tile-2)",
-              flexShrink: 0,
+              fontFamily: "var(--font-data)",
+              fontSize: compact ? 12 : 13,
+              lineHeight: 1,
+              fontWeight: 400,
+              color: "var(--text-muted)",
+              whiteSpace: "nowrap",
             }}
           >
-            <div
-              style={{
-                width: 9,
-                height: 9,
-                borderRadius: "var(--r-full)",
-                background: "var(--rain)",
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "var(--font-body)",
-                fontSize: 14,
-                lineHeight: 1,
-                fontWeight: 400,
-                color: "var(--text-2)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {weather.precipLabel}
-            </span>
+            {stats}
           </div>
         </div>
         <div
@@ -93,14 +186,18 @@ export function WeatherTile({ weather, nowHour, note }: { weather: WeatherView; 
             fontWeight: 400,
             color: "var(--text-muted)",
             textAlign: "right",
-            minWidth: 0,
+            flexShrink: 0,
           }}
         >
-          {weather.attribution}
+          Stabekk · data fra Yr
         </div>
       </div>
       {note}
-      <Meteogram slots={weather.slots} nowHour={nowHour} />
+      <div className="weather-parts">
+        {weather.parts.map((part) => (
+          <DayPartCard key={part.id} part={part} compact={compact} />
+        ))}
+      </div>
     </section>
   );
 }

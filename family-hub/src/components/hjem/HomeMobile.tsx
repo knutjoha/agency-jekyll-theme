@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DeparturesTile } from "@/components/hjem/DeparturesTile";
 import { FreshnessLine } from "@/components/hjem/FreshnessLine";
+import { WeatherTile } from "@/components/hjem/WeatherTile";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import type { Person, SoonItem, WeatherView } from "@/data/types";
 import { SOON_EMPTY } from "@/lib/calendar-view";
@@ -177,6 +178,34 @@ export function HomeMobile({
           people.map((person) => <PersonCard key={person.id} person={person} />)
         )}
       </div>
+
+      {weather ? (
+        <WeatherTile
+          weather={weather}
+          compact
+          note={phase && updatedAt ? <FreshnessLine phase={phase.weather} updatedAt={updatedAt.weather} /> : null}
+        />
+      ) : (
+        <section
+          data-region="weather"
+          data-state={!phase || phase.weather === "loading" || phase.weather === "updating" ? "loading" : phase.weather}
+          className="sk-tile sk-weather"
+          aria-busy={!phase || phase.weather === "loading" || phase.weather === "updating"}
+          style={{ minHeight: 200, padding: 16, gap: 10 }}
+        >
+          {!phase || phase.weather === "loading" || phase.weather === "updating" ? (
+            <>
+              <div className="sk-bone" style={{ width: 128, height: 16 }} />
+              <div className="sk-bone" style={{ width: "100%", height: 96, borderRadius: 12 }} />
+            </>
+          ) : (
+            <div style={{ fontFamily: "var(--font-body)", fontSize: 15, lineHeight: 1.3, color: "var(--text-muted)" }}>
+              {phase.weather === "offline" ? "Ingen nett" : "Fikk ikke hentet været"}
+            </div>
+          )}
+          {phase && updatedAt ? <FreshnessLine phase={phase.weather} updatedAt={updatedAt.weather} /> : null}
+        </section>
+      )}
 
       {dinner !== undefined ? (
         <section

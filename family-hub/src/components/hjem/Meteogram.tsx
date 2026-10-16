@@ -5,6 +5,7 @@ import {
   CloudRain,
   CloudSun,
   Moon,
+  Sun,
   type LucideIcon,
 } from "lucide-react";
 import type { WeatherSymbol, WeatherView } from "@/data/types";
@@ -13,6 +14,7 @@ const icons: Record<WeatherSymbol, LucideIcon> = {
   "cloud-rain": CloudRain,
   "cloud-drizzle": CloudDrizzle,
   "cloud-sun": CloudSun,
+  sun: Sun,
   cloud: Cloud,
   "cloud-moon": CloudMoon,
   moon: Moon,
