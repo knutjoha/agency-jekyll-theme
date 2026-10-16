@@ -5,7 +5,9 @@ import {
   MINUS,
   SKIP_NOK,
   emptyWeek,
+  emptyWeekFor,
   extraDraftValid,
+  mondayFor,
   formatKr,
   nextSkips,
   parseAmount,
@@ -69,6 +71,16 @@ test("week id must be a Monday, like Middag", () => {
   assert.equal(week.locked, false);
   assert.equal(week.pool.length, 0);
   assert.equal(week.lanes.length, 3);
+  assert.equal(mondayFor("2026-10-07"), "2026-10-05");
+  assert.equal(mondayFor("2026-10-12"), "2026-10-12");
+  const next = emptyWeekFor("2026-10-12");
+  assert.equal(next.week, "2026-10-12");
+  assert.equal(next.locked, false);
+  assert.equal(next.pool.length, 0);
+  assert.equal(
+    next.lanes.every((lane) => lane.skips === 0 && lane.extras.length === 0),
+    true,
+  );
   assert.deepEqual(
     week.lanes.map((lane) => lane.personId),
     ["amelia", "hedda", "maja"],

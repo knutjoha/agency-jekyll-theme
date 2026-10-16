@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Trash2 } from "lucide-react";
+import { WeekButtons } from "@/components/middag/DinnerEditor";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import {
   BasicEditor,
@@ -48,11 +49,15 @@ export function VerdiMobile({
   weather,
   week: initial,
   persisted,
+  canShift,
+  onShift,
 }: {
   clock: OsloNow;
   weather: WeatherView;
   week: VerdiWeek;
   persisted: boolean;
+  canShift: boolean;
+  onShift: (week: VerdiWeek, deltaWeeks: number) => void;
 }) {
   const [selectedId, setSelectedId] = useState<VerdiOwnerId>("amelia");
   const actions = useVerdiActions(initial, persisted);
@@ -137,7 +142,10 @@ export function VerdiMobile({
         </div>
         <CompleteWeekButton locked={week.locked} onComplete={actions.completeWeek} />
       </div>
-      <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>{week.period}</div>
+      <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>{week.period}</div>
+        <WeekButtons enabled={canShift} onPrevious={() => onShift(week, -1)} onNext={() => onShift(week, 1)} />
+      </div>
 
       <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
         {week.lanes.map((lane) => {

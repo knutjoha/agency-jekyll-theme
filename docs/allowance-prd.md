@@ -14,7 +14,7 @@ The product UI is Norwegian. This document is in English.
 
 ## 1. Summary
 
-Verdi is a fifth nav item. It is the un-parked chores slice: three daughters, one current week, a shared honour-system iPad.
+Verdi is a fifth nav item. It is the un-parked chores slice: three daughters, Monday-weeks you can step with the same Forrige/Neste control as Middag and Kalender, a shared honour-system iPad.
 
 Each daughter has the same obligatory basics, a skip counter, extras with kroner amounts, and a running total:
 
@@ -28,7 +28,7 @@ Basics still have no ticks, no daily check-in, no Sunday cron, and no payout in 
 
 A fourth **Ledige** lane holds extra tasks anyone can define (title + amount). Kids pick one up by dragging it to their column (phone: **Ta** on that daughter’s view). When the work is done, they mark the extra complete — Todo’s 22×22 checkbox, not a new control.
 
-Match Todo for empty-lane create, complete checkboxes, and phone vs iPad. Match Middag for the week id (Monday, Europe/Oslo) and for pointer-drag on the wide board. Do not invent a third pattern. Reuse Family Hub tiles, type, and primary pills (`Lagre` convex lighting on **Fullfør uke** and extra **Lagre**). Skeletons on route change, never orbs. Nav stays flat.
+Match Todo for empty-lane create, complete checkboxes, and phone vs iPad. Match Middag for the week id (Monday, Europe/Oslo), for Forrige/Neste (`WeekButtons`), and for pointer-drag on the wide board. Do not invent a third pattern. Reuse Family Hub tiles, type, and primary pills (`Lagre` convex lighting on **Fullfør uke** and extra **Lagre**). Skeletons on route change, never orbs. Nav stays flat.
 
 ---
 
@@ -60,6 +60,7 @@ Lane order on screen follows the existing daughter order in Todo (after the pare
 6. **Daughter.** When I have finished an extra on my lane, I want to mark it complete, so its kroner land in my `shown`.
 7. **Anyone.** When the week is done, I want to press **Fullfør uke**, so the numbers freeze and payout can happen in the other app.
 8. **Daughter, empty extras.** When her extras list is empty, I want the same create-new control as Todo, so I am not staring at a blank lane with special copy.
+9. **Anyone.** When last week is already locked or I want to set up next week, I want Forrige/Neste like Middag, so I do not mix two weeks’ kroner.
 
 ---
 
@@ -68,7 +69,7 @@ Lane order on screen follows the existing daughter order in Todo (after the pare
 ### In v1.1
 
 - Fifth nav item: Lucide money/banknote icon, label **Verdi**, route `/verdi`. Same `navItems` list as Hjem / Kalender / Todo / Middag. Phone uses the existing bottom tab bar; iPad/desktop uses the existing side rail. Five `flex: 1` tabs. Do not add a overflow or “more” menu.
-- Current Monday-week only, week id = Monday `YYYY-MM-DD` in Europe/Oslo, same `mondayOf` / `mondayFor` model as Middag (`starts_on` / dinner `week_id`). Not the calendar payload.
+- Monday-weeks, week id = Monday `YYYY-MM-DD` in Europe/Oslo, same `mondayOf` / `mondayFor` model as Middag (`starts_on` / dinner `week_id`). Not the calendar payload. Forrige/Neste uses the same chevron `WeekButtons` as Middag (Kalender’s wide grid uses the same pair). Each week is its own dataset: skips, extras, Ledige pool, lock.
 - Three daughter lanes plus a fourth **Ledige** extras pool. Shared household basics. Per-kid skip integer. Per-kid extras. Pool extras (title + amount) that a kid claims by drag (wide) or **Ta** (phone). Complete checkbox on extras in a daughter’s lane. One lock for the week.
 - Honour system on the unsigned-in hallway iPad.
 
@@ -78,7 +79,7 @@ Lane order on screen follows the existing daughter order in Todo (after the pare
 - Auth, Google login wall, PIN, parent session, kid logins.
 - Per-task checkboxes on **basics**, daily check-in, skip-per-day, mapping the skip integer onto individual basics. (Extras in a daughter’s lane *do* have a complete checkbox.)
 - Sunday cron, scheduled lock, reminders.
-- Week rewind / Forrige–Neste week (Middag has this; Verdi does not in v1.1). If a locked week is ever shown later, **locked stays locked**. There is no unlock.
+- Unlocking a locked week. If a locked week is shown later, **locked stays locked**. There is no unlock.
 - Calendar writes. Verdi does not create or edit Team Vidvei events.
 - Per-item parent approval of extras. Dragging extras between daughters, or back to **Ledige**.
 - Special empty, error, or offline copy. No new error strings for this page.
@@ -101,8 +102,8 @@ Lane order on screen follows the existing daughter order in Todo (after the pare
 6. **Deduction is per skipped task, not per day.** The 10 NOK step is fixed. It is not configurable in v1.1.
 7. **Extras.** Anyone adds an extra on **Ledige** or on a daughter’s lane: title + positive integer NOK amount. No cap. A pool extra is claimed onto one daughter (wide: drag the grip onto her column; phone: **Ta** on her view). Claimed extras start incomplete. Completing an extra on her lane adds its amount to `extras` in the formula. Unclaimed and incomplete extras do not count. No per-item approval. The week lock is the only approval. Direct **Ny ekstra** on a daughter’s lane is still allowed and starts incomplete.
 8. **Who may edit.** No restrictions. Anyone at the shared iPad may press ±, add/delete extras, edit an extra, edit a basic title, and press **Fullfør uke**. No PIN.
-9. **New week.** When Oslo today is in a new Monday-week, `/verdi` shows a new unlocked record: `skips = 0`, extras empty, same four basics. No job copies last week’s extras. No Sunday script.
-10. **Lock.** **Fullfør uke** sets `locked = true` on that week id. After lock: ±, extras, basics, and the button are inert. Totals stay visible. Payout is manual elsewhere.
+9. **New week.** When Oslo today is in a new Monday-week, `/verdi` shows a new unlocked record: `skips = 0`, extras empty, same four basics. No job copies last week’s extras. No Sunday script. Stepping Forrige/Neste to a Monday that has no rows yet shows the same empty unlocked week (create on first write, like Middag’s empty shell).
+10. **Lock.** **Fullfør uke** sets `locked = true` on that week id. After lock: ±, extras, basics, and the button are inert. Totals stay visible. Payout is manual elsewhere. Navigating away and back does not unlock.
 11. **Formula.** `shown = 50 + completed extras − 10 * skips`. `shown` may be below 50. Do not floor `shown` at 0.
 
 ---
@@ -111,7 +112,7 @@ Lane order on screen follows the existing daughter order in Todo (after the pare
 
 One week record, keyed like Middag, not like the calendar.
 
-**Week id.** Monday of the current Oslo calendar week: `mondayOf(osloDateKey(now))` → `YYYY-MM-DD`. Example: Saturday 11.10.2026 → `2026-10-05`. Display label may reuse Middag’s period (`05.10 – 11.10` / `Uke N`) so the family can see which week they are locking. No week-shift controls.
+**Week id.** Monday of the Oslo calendar week: `mondayOf(osloDateKey(now))` → `YYYY-MM-DD`. Example: Saturday 11.10.2026 → `2026-10-05`. Display label may reuse Middag’s period (`05.10 – 11.10` / `Uke N`). Forrige/Neste steps seven days, same as Middag. `/verdi` opens the current Monday; `?week=` loads that Monday (snapped via `mondayFor`).
 
 **Household (not per week)**
 
@@ -163,9 +164,9 @@ Do not put parent avatars on Verdi. Phone chips are the three daughters plus **L
 ### 7.2 Page chrome (wide)
 
 - Title **Verdi**.
-- Week label for the current Monday-week (Middag-style `Uke N · period` is fine).
-- No Forrige / Neste.
-- Primary pill **Fullfør uke** (convex `pill-primary`, same recipe as **Lagre**). After lock, replace with inert status **Uken er låst** — not a second accent CTA.
+- Week label (Middag-style `Uke N · period`).
+- Forrige / Neste chevrons: reuse Middag `WeekButtons` (`aria-label` **Forrige uke** / **Neste uke**). Place them after the period, before **Fullfør uke**, same header cluster as Ukemeny.
+- Primary pill **Fullfør uke** (convex `pill-primary`, same recipe as **Lagre**). After lock, replace with inert status **Uken er låst** — not a second accent CTA. The lock is per week id.
 
 ### 7.3 Lane
 
@@ -192,7 +193,7 @@ Locked: list stays; create-new, ±, editors, **Slett**, and **Fullfør uke** do 
 
 ### 7.4 Phone chrome
 
-`PhoneHeader` as on Todo. Then the three daughter chips plus **Ledige**. Then the selected lane (basics, skip control, unclaimed **Ledige** with **Ta**, extras, create-new) — or just extras + create-new when **Ledige** is selected. **Fullfør uke** once, for the week, not per lane — pin it with the week label above the chips or directly under the header, not copied inside each daughter.
+`PhoneHeader` as on Todo. Then **Verdi · Uke N** with **Fullfør uke**. Then the period and the same `WeekButtons` as Middag’s phone meny. Then the three daughter chips plus **Ledige**. Then the selected lane (basics, skip control, unclaimed **Ledige** with **Ta**, extras, create-new) — or just extras + create-new when **Ledige** is selected. **Fullfør uke** once, for the week, not per lane.
 
 ---
 
@@ -274,15 +275,22 @@ Locked: list stays; create-new, ±, editors, **Slett**, and **Fullfør uke** do 
 **And** a basic title change is the same four titles on all three lanes  
 **And** the app does not ask who is acting
 
-### Week rewind (not in v1.1)
+### Week Forrige / Neste
 
-**Given** v1.1  
-**Then** there are no Forrige / Neste week controls on Verdi  
-**And** `/verdi` is the current Monday-week only
+**Given** the current unlocked week with a skip or a completed extra on Amelia  
+**When** anyone taps **Neste uke**  
+**Then** the board shows the next Monday-week  
+**And** Amelia’s skips are 0, extras and Ledige are empty, and the week is unlocked  
+**And** Hedda and Maja are also empty for that week
+
+**Given** that next week  
+**When** anyone taps **Forrige uke**  
+**Then** Amelia’s previous skip or extra is back  
+**And** that week’s lock state is the one that was saved
 
 **Given** a week that is already `locked`  
-**When** that week is shown (now, or in a later rewind)  
-**Then** it stays locked — no unlock control in this PRD
+**When** that week is shown  
+**Then** it stays locked — no unlock control
 
 ---
 
@@ -312,6 +320,8 @@ Locked: list stays; create-new, ±, editors, **Slett**, and **Fullfør uke** do 
 | Delete | Slett |
 | Complete week | Fullfør uke |
 | Locked status | Uken er låst |
+| Previous week | Forrige uke |
+| Next week | Neste uke |
 
 Reuse Todo **Lagre** / **Slett**. Do not add **Avbryt**. Amounts already in context may omit a unit; if a unit is needed, **kr**.
 
@@ -321,7 +331,7 @@ Reuse Todo **Lagre** / **Slett**. Do not add **Avbryt**. Amounts already in cont
 
 - Route `/verdi`. Add `{ href: "/verdi", label: "Verdi", icon: Banknote }` (or the closest Lucide money icon) to `navItems`. Add `"/verdi"` to `APP_PATHS`. Skeleton `loading.tsx` like Todo/Middag.
 - Phone vs wide: `TodoScreen` / `HallwayPage` split, not a new breakpoint.
-- Week key: `mondayFor(null, now)` / `mondayOf(osloDateKey(now))`, same as dinner `week_id`.
+- Week key: `mondayFor(week, now)` / `mondayOf(osloDateKey(now))`, same as dinner `week_id`. GET `/api/verdi?week=` like dinner. No new SQL: `verdi_week.id` is already the Monday.
 - Named constant `BASE_NOK = 50`. Skip step `SKIP_NOK = 10`.
 - Greenfield SQL: `family-hub/supabase/verdi.sql` (`person_id` includes `pool`, extras have `done`). If an earlier Verdi schema already ran, `family-hub/supabase/verdi-pool.sql` is the additive alter.
 - Wide drag: pointer-drag from the pool grip onto `[data-person]`, same hit-testing idea as Middag. Phone does not drag; it uses **Ta**.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { WeekButtons } from "@/components/middag/DinnerEditor";
 import {
   BasicEditor,
   CompleteWeekButton,
@@ -38,7 +39,17 @@ function personFor(id: VerdiDaughterId): Person {
   return person;
 }
 
-export function VerdiBoard({ week: initial, persisted }: { week: VerdiWeek; persisted: boolean }) {
+export function VerdiBoard({
+  week: initial,
+  persisted,
+  canShift,
+  onShift,
+}: {
+  week: VerdiWeek;
+  persisted: boolean;
+  canShift: boolean;
+  onShift: (week: VerdiWeek, deltaWeeks: number) => void;
+}) {
   const actions = useVerdiActions(initial, persisted);
   const { week, drafts, editingBasicId, basicTitle } = actions;
   const rootRef = useRef<HTMLDivElement>(null);
@@ -177,6 +188,7 @@ export function VerdiBoard({ week: initial, persisted }: { week: VerdiWeek; pers
           >
             Uke {week.weekNumber} · {week.period}
           </div>
+          <WeekButtons enabled={canShift} onPrevious={() => onShift(week, -1)} onNext={() => onShift(week, 1)} />
         </div>
         <CompleteWeekButton locked={week.locked} onComplete={actions.completeWeek} />
       </div>

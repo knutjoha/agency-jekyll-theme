@@ -154,15 +154,35 @@ export function emptyLanes(): VerdiLane[] {
   return VERDI_DAUGHTERS.map((personId) => ({ personId, skips: 0, extras: [] }));
 }
 
-export function emptyWeek(now = new Date()): VerdiWeek {
-  const monday = mondayOf(osloDateKey(now));
+export function mondayFor(week: string | null | undefined, now = new Date()): string {
+  const requested = week ? parseIsoDate(week) : null;
+  return requested ? mondayOf(requested) : mondayOf(osloDateKey(now));
+}
+
+export function emptyWeekFor(monday: string, basics?: VerdiBasic[]): VerdiWeek {
   return {
-    ...verdiWeekMeta(monday),
+    ...verdiWeekMeta(mondayOf(monday)),
     locked: false,
     lockedAt: null,
-    basics: DEFAULT_BASICS.map((basic) => ({ ...basic })),
+    basics: (basics ?? DEFAULT_BASICS).map((basic) => ({ ...basic })),
     pool: [],
     lanes: emptyLanes(),
+  };
+}
+
+export function emptyWeek(now = new Date()): VerdiWeek {
+  return emptyWeekFor(mondayOf(osloDateKey(now)));
+}
+
+export function cloneVerdiWeek(week: VerdiWeek): VerdiWeek {
+  return {
+    ...week,
+    basics: week.basics.map((basic) => ({ ...basic })),
+    pool: (week.pool ?? []).map((extra) => ({ ...extra, editing: false })),
+    lanes: week.lanes.map((lane) => ({
+      ...lane,
+      extras: lane.extras.map((extra) => ({ ...extra, editing: false })),
+    })),
   };
 }
 
