@@ -8,6 +8,8 @@ import {
   ENTUR_CLIENT_NAME,
   L1_LINE_ID,
   L1_QUAY_ID,
+  L2_LINE_ID,
+  R21_LINE_ID,
   SKOYEN_STOP_PLACE_ID,
   bus150Departures,
   callsAtSkoyen,
@@ -18,6 +20,8 @@ import {
   fixtureDepartures,
   getDepartures,
   l1Departures,
+  l2Departures,
+  r21Departures,
   selectDepartureLines,
   type EstimatedCall,
 } from "./departures.ts";
@@ -34,10 +38,13 @@ test("the journey query uses the verified Stabekk quays and line ids", () => {
   assert.equal(SKOYEN_STOP_PLACE_ID, "NSR:StopPlace:152");
   assert.match(DEPARTURES_QUERY, new RegExp(L1_QUAY_ID));
   assert.match(DEPARTURES_QUERY, new RegExp(L1_LINE_ID));
+  assert.match(DEPARTURES_QUERY, new RegExp(L2_LINE_ID));
+  assert.match(DEPARTURES_QUERY, new RegExp(R21_LINE_ID));
   assert.match(DEPARTURES_QUERY, new RegExp(BUS_150_QUAY_ID));
   assert.match(DEPARTURES_QUERY, new RegExp(BUS_150_LINE_ID));
   assert.match(DEPARTURES_QUERY, /passingTimes/);
   assert.match(DEPARTURES_QUERY, /estimatedCalls/);
+  assert.equal((DEPARTURES_QUERY.match(new RegExp(L1_QUAY_ID, "g")) ?? []).length, 3);
 });
 
 test("L1 keeps only journeys that call at Skøyen", () => {
@@ -79,8 +86,8 @@ test("L1 keeps only journeys that call at Skøyen", () => {
     expectedDepartureTime: "2026-10-15T09:15:00+02:00",
     destinationDisplay: { frontText: "Oslo S" },
     serviceJourney: {
-      id: "VYG:ServiceJourney:l2",
-      line: { id: "VYG:Line:L2" },
+      id: "VYG:ServiceJourney:fly",
+      line: { id: "FLT:Line:FLY2" },
       passingTimes: [skoyen(SKOYEN_STOP_PLACE_ID)],
     },
   });
@@ -114,6 +121,54 @@ test("bus 150 from Stabekk stays only when it runs toward Nationaltheatret", () 
     serviceJourney: { id: "RUT:ServiceJourney:160", line: { id: "RUT:Line:160" } },
   });
   assert.deepEqual(bus150Departures([toward, away, other]).map((row) => row.destination), ["Nationaltheatret"]);
+});
+
+test("L2 and R21 keep only journeys that call at Skøyen", () => {
+  const l2Keep = call({
+    aimedDepartureTime: "2026-10-16T10:00:00+02:00",
+    expectedDepartureTime: "2026-10-16T10:00:00+02:00",
+    destinationDisplay: { frontText: "Ski" },
+    serviceJourney: {
+      id: "VYG:ServiceJourney:l2-keep",
+      line: { id: L2_LINE_ID },
+      passingTimes: [skoyen("NSR:StopPlace:706"), skoyen(SKOYEN_STOP_PLACE_ID)],
+    },
+  });
+  const l2Skip = call({
+    aimedDepartureTime: "2026-10-16T10:30:00+02:00",
+    expectedDepartureTime: "2026-10-16T10:30:00+02:00",
+    destinationDisplay: { frontText: "Ski" },
+    serviceJourney: {
+      id: "VYG:ServiceJourney:l2-skip",
+      line: { id: L2_LINE_ID },
+      passingTimes: [skoyen("NSR:StopPlace:706")],
+    },
+  });
+  const r21Keep = call({
+    aimedDepartureTime: "2026-10-16T10:36:00+02:00",
+    expectedDepartureTime: "2026-10-16T10:36:00+02:00",
+    destinationDisplay: { frontText: "Moss" },
+    serviceJourney: {
+      id: "VYG:ServiceJourney:r21-keep",
+      line: { id: R21_LINE_ID },
+      estimatedCalls: [skoyen("NSR:StopPlace:59651")],
+    },
+  });
+  const r21Other = call({
+    aimedDepartureTime: "2026-10-16T10:40:00+02:00",
+    expectedDepartureTime: "2026-10-16T10:40:00+02:00",
+    destinationDisplay: { frontText: "Moss" },
+    serviceJourney: {
+      id: "VYG:ServiceJourney:r21-as-l2",
+      line: { id: L2_LINE_ID },
+      passingTimes: [skoyen(SKOYEN_STOP_PLACE_ID)],
+    },
+  });
+
+  assert.deepEqual(l2Departures([l2Keep, l2Skip, r21Keep]).map((row) => row.destination), ["Ski"]);
+  assert.deepEqual(r21Departures([r21Keep, r21Other, l2Keep]).map((row) => row.id), [
+    "VYG:ServiceJourney:r21-keep@2026-10-16T10:36:00+02:00",
+  ]);
 });
 
 test("delay is expected minus aimed, and a cancellation is Innstilt", () => {
@@ -199,12 +254,17 @@ test("each line keeps its own next three departures", () => {
     board.map((line) => [line.line, line.departures.map((row) => row.id)]),
     [
       ["L1", ["l1-a", "l1-b", "l1-c"]],
+      ["L2", []],
+      ["R21", []],
       ["150", ["bus-a", "bus-b", "bus-c"]],
     ],
   );
+  assert.equal(board[1].destination, "Ski");
+  assert.equal(board[2].destination, "Moss");
   assert.equal(board[0].departures[2].cancelled, true);
 
   const frozen = selectDepartureLines(fixtureDepartures.rows, SNAPSHOT_AT);
+  assert.deepEqual(frozen.map((line) => line.line), ["L1", "L2", "R21", "150"]);
   assert.deepEqual(frozen[0].departures.map((row) => row.id), ["l1-on", "l1-delay", "l1-cancel"]);
   assert.deepEqual(departureDisplay(frozen[0].departures[0], SNAPSHOT_AT), {
     time: "07:56",
@@ -227,17 +287,21 @@ test("each line keeps its own next three departures", () => {
     cancelled: true,
     tone: "cancelled",
   });
-  assert.deepEqual(frozen[1].departures.map((row) => row.id), ["bus-delay", "bus-cancel", "bus-on"]);
-  assert.deepEqual(departureDisplay(frozen[1].departures[0], SNAPSHOT_AT), {
+  assert.deepEqual(frozen[1].departures.map((row) => row.id), ["l2-on", "l2-delay", "l2-cancel"]);
+  assert.equal(frozen[1].destination, "Ski");
+  assert.deepEqual(frozen[2].departures.map((row) => row.id), ["r21-on", "r21-delay", "r21-cancel"]);
+  assert.equal(frozen[2].destination, "Moss");
+  assert.deepEqual(frozen[3].departures.map((row) => row.id), ["bus-delay", "bus-cancel", "bus-on"]);
+  assert.deepEqual(departureDisplay(frozen[3].departures[0], SNAPSHOT_AT), {
     time: "07:49",
     delayLabel: "+3 min",
     untilLabel: "om 7 min",
     cancelled: false,
     tone: "delayed",
   });
-  assert.equal(departureDisplay(frozen[1].departures[1], SNAPSHOT_AT).delayLabel, "Innstilt");
-  assert.equal(departureDisplay(frozen[1].departures[1], SNAPSHOT_AT).untilLabel, null);
-  assert.deepEqual(departureDisplay(frozen[1].departures[2], SNAPSHOT_AT), {
+  assert.equal(departureDisplay(frozen[3].departures[1], SNAPSHOT_AT).delayLabel, "Innstilt");
+  assert.equal(departureDisplay(frozen[3].departures[1], SNAPSHOT_AT).untilLabel, null);
+  assert.deepEqual(departureDisplay(frozen[3].departures[2], SNAPSHOT_AT), {
     time: "08:22",
     delayLabel: null,
     untilLabel: "om 40 min",
@@ -275,6 +339,47 @@ test("an Entur payload is filtered before it is cached", async () => {
           },
         ],
       },
+      l2: {
+        estimatedCalls: [
+          {
+            aimedDepartureTime: "2026-10-15T09:30:00+02:00",
+            expectedDepartureTime: "2026-10-15T09:30:00+02:00",
+            cancellation: false,
+            destinationDisplay: { frontText: "Ski" },
+            serviceJourney: {
+              id: "VYG:ServiceJourney:l2",
+              line: { id: L2_LINE_ID },
+              passingTimes: [skoyen(SKOYEN_STOP_PLACE_ID)],
+            },
+          },
+        ],
+      },
+      r21: {
+        estimatedCalls: [
+          {
+            aimedDepartureTime: "2026-10-15T09:36:00+02:00",
+            expectedDepartureTime: "2026-10-15T09:36:00+02:00",
+            cancellation: false,
+            destinationDisplay: { frontText: "Moss" },
+            serviceJourney: {
+              id: "VYG:ServiceJourney:r21-skip",
+              line: { id: R21_LINE_ID },
+              passingTimes: [skoyen("NSR:StopPlace:418")],
+            },
+          },
+          {
+            aimedDepartureTime: "2026-10-15T10:36:00+02:00",
+            expectedDepartureTime: "2026-10-15T10:36:00+02:00",
+            cancellation: false,
+            destinationDisplay: { frontText: "Moss" },
+            serviceJourney: {
+              id: "VYG:ServiceJourney:r21",
+              line: { id: R21_LINE_ID },
+              estimatedCalls: [skoyen(SKOYEN_STOP_PLACE_ID)],
+            },
+          },
+        ],
+      },
       bus: {
         estimatedCalls: [
           {
@@ -289,8 +394,9 @@ test("an Entur payload is filtered before it is cached", async () => {
     },
   };
   const view = departuresFromEntur(payload);
-  assert.deepEqual(view?.rows.map((row) => row.line), ["L1", "150"]);
-  assert.equal(view?.rows[1].cancelled, true);
+  assert.deepEqual(view?.rows.map((row) => row.line), ["L1", "L2", "R21", "150"]);
+  assert.equal(view?.rows.find((row) => row.line === "150")?.cancelled, true);
+  assert.equal(view?.rows.find((row) => row.line === "R21")?.id, "VYG:ServiceJourney:r21@2026-10-15T10:36:00+02:00");
 
   let clientName = "";
   const fetched = await getDepartures(async (_url, init) => {
@@ -298,6 +404,12 @@ test("an Entur payload is filtered before it is cached", async () => {
     return Response.json(payload);
   });
   assert.equal(clientName, ENTUR_CLIENT_NAME);
-  assert.equal(fetched.rows.length, 2);
+  assert.equal(fetched.rows.length, 4);
   assert.equal(departuresFromEntur({ data: { l1: null, bus: { estimatedCalls: [] } } }), null);
+  assert.equal(
+    departuresFromEntur({
+      data: { l1: { estimatedCalls: [] }, l2: { estimatedCalls: [] }, bus: { estimatedCalls: [] } },
+    }),
+    null,
+  );
 });

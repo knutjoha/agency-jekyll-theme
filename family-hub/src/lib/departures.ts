@@ -1,8 +1,9 @@
 import { formatOslo } from "./oslo";
 
 /**
- * IDs checked against Entur Journey Planner on 2026-10-15.
+ * IDs checked against Entur Journey Planner on 2026-10-16.
  * Stabekk stasjon is NSR:StopPlace:59654. Platform 2 (toward Oslo) is NSR:Quay:1150.
+ * L1, L2 and R21 all leave that quay toward Oslo / Skøyen.
  * Service journeys name Skøyen stasjon as NSR:StopPlace:152. The geocoder also
  * returns NSR:StopPlace:59651 for that station; passingTimes and estimatedCalls do not.
  */
@@ -10,6 +11,8 @@ export const ENTUR_JOURNEY_PLANNER_URL = "https://api.entur.io/journey-planner/v
 export const ENTUR_CLIENT_NAME = "knutjoha-familyhub";
 
 export const L1_LINE_ID = "VYG:Line:L1";
+export const L2_LINE_ID = "VYG:Line:L2";
+export const R21_LINE_ID = "VYG:Line:R21";
 export const L1_QUAY_ID = "NSR:Quay:1150";
 export const BUS_150_LINE_ID = "RUT:Line:150";
 export const BUS_150_QUAY_ID = "NSR:Quay:6710";
@@ -18,8 +21,9 @@ export const SKOYEN_STOP_PLACE_IDS = [SKOYEN_STOP_PLACE_ID, "NSR:StopPlace:59651
 
 export const DEPARTURE_ROW_COUNT = 3;
 const CANDIDATE_COUNT = 8;
+const MAX_DEPARTURE_ROWS = 40;
 
-export type DepartureLine = "L1" | "150";
+export type DepartureLine = "L1" | "L2" | "R21" | "150";
 
 export type Departure = {
   id: string;
@@ -61,17 +65,10 @@ export type DepartureDisplay = {
   tone: DepartureTone;
 };
 
-const LINE_IDS = new Set<DepartureLine>(["L1", "150"]);
+const LINE_IDS = new Set<DepartureLine>(["L1", "L2", "R21", "150"]);
 const SKOYEN_IDS = new Set<string>(SKOYEN_STOP_PLACE_IDS);
 
-export const DEPARTURES_QUERY = `query FamilyHubDepartures {
-  l1: quay(id: "${L1_QUAY_ID}") {
-    estimatedCalls(
-      numberOfDepartures: ${CANDIDATE_COUNT}
-      whiteListedModes: [rail]
-      whiteListed: { lines: ["${L1_LINE_ID}"] }
-    ) {
-      aimedDepartureTime
+const RAIL_CALL_FIELDS = `aimedDepartureTime
       expectedDepartureTime
       cancellation
       destinationDisplay { frontText }
@@ -80,9 +77,24 @@ export const DEPARTURES_QUERY = `query FamilyHubDepartures {
         line { id }
         passingTimes { quay { stopPlace { id } } }
         estimatedCalls { quay { stopPlace { id } } }
-      }
+      }`;
+
+function railQuayQuery(alias: string, lineId: string): string {
+  return `${alias}: quay(id: "${L1_QUAY_ID}") {
+    estimatedCalls(
+      numberOfDepartures: ${CANDIDATE_COUNT}
+      whiteListedModes: [rail]
+      whiteListed: { lines: ["${lineId}"] }
+    ) {
+      ${RAIL_CALL_FIELDS}
     }
-  }
+  }`;
+}
+
+export const DEPARTURES_QUERY = `query FamilyHubDepartures {
+  ${railQuayQuery("l1", L1_LINE_ID)}
+  ${railQuayQuery("l2", L2_LINE_ID)}
+  ${railQuayQuery("r21", R21_LINE_ID)}
   bus: quay(id: "${BUS_150_QUAY_ID}") {
     estimatedCalls(
       numberOfDepartures: ${CANDIDATE_COUNT}
@@ -104,9 +116,11 @@ export type LineDepartures = {
   departures: Departure[];
 };
 
-const LINE_ORDER: DepartureLine[] = ["L1", "150"];
+const LINE_ORDER: DepartureLine[] = ["L1", "L2", "R21", "150"];
 const LINE_DESTINATION: Record<DepartureLine, string> = {
   L1: "Lillestrøm",
+  L2: "Ski",
+  R21: "Moss",
   "150": "Nationaltheatret",
 };
 
@@ -151,6 +165,86 @@ export const fixtureDepartures: DeparturesView = {
       destination: "Lillestrøm",
       aimed: "2026-10-03T07:10:00.000Z",
       expected: "2026-10-03T07:10:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "l2-past",
+      line: "L2",
+      destination: "Ski",
+      aimed: "2026-10-03T05:00:00.000Z",
+      expected: "2026-10-03T05:00:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "l2-on",
+      line: "L2",
+      destination: "Ski",
+      aimed: "2026-10-03T05:48:00.000Z",
+      expected: "2026-10-03T05:48:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "l2-delay",
+      line: "L2",
+      destination: "Ski",
+      aimed: "2026-10-03T06:18:00.000Z",
+      expected: "2026-10-03T06:20:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "l2-cancel",
+      line: "L2",
+      destination: "Ski",
+      aimed: "2026-10-03T06:48:00.000Z",
+      expected: "2026-10-03T06:48:00.000Z",
+      cancelled: true,
+    },
+    {
+      id: "l2-later",
+      line: "L2",
+      destination: "Ski",
+      aimed: "2026-10-03T07:18:00.000Z",
+      expected: "2026-10-03T07:18:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "r21-past",
+      line: "R21",
+      destination: "Moss",
+      aimed: "2026-10-03T04:36:00.000Z",
+      expected: "2026-10-03T04:36:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "r21-on",
+      line: "R21",
+      destination: "Moss",
+      aimed: "2026-10-03T06:36:00.000Z",
+      expected: "2026-10-03T06:36:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "r21-delay",
+      line: "R21",
+      destination: "Moss",
+      aimed: "2026-10-03T07:36:00.000Z",
+      expected: "2026-10-03T07:39:00.000Z",
+      cancelled: false,
+    },
+    {
+      id: "r21-cancel",
+      line: "R21",
+      destination: "Moss",
+      aimed: "2026-10-03T08:36:00.000Z",
+      expected: "2026-10-03T08:36:00.000Z",
+      cancelled: true,
+    },
+    {
+      id: "r21-later",
+      line: "R21",
+      destination: "Moss",
+      aimed: "2026-10-03T09:36:00.000Z",
+      expected: "2026-10-03T09:36:00.000Z",
       cancelled: false,
     },
     {
@@ -223,15 +317,27 @@ function toDeparture(call: EstimatedCall, line: DepartureLine): Departure | null
   };
 }
 
-export function l1Departures(calls: EstimatedCall[]): Departure[] {
+export function railTowardSkoyen(calls: EstimatedCall[], lineId: string, line: DepartureLine): Departure[] {
   const rows: Departure[] = [];
   for (const call of calls) {
-    if (call.serviceJourney?.line?.id !== L1_LINE_ID) continue;
+    if (call.serviceJourney?.line?.id !== lineId) continue;
     if (!callsAtSkoyen(call)) continue;
-    const row = toDeparture(call, "L1");
+    const row = toDeparture(call, line);
     if (row) rows.push(row);
   }
   return rows;
+}
+
+export function l1Departures(calls: EstimatedCall[]): Departure[] {
+  return railTowardSkoyen(calls, L1_LINE_ID, "L1");
+}
+
+export function l2Departures(calls: EstimatedCall[]): Departure[] {
+  return railTowardSkoyen(calls, L2_LINE_ID, "L2");
+}
+
+export function r21Departures(calls: EstimatedCall[]): Departure[] {
+  return railTowardSkoyen(calls, R21_LINE_ID, "R21");
 }
 
 export function bus150Departures(calls: EstimatedCall[]): Departure[] {
@@ -294,7 +400,7 @@ function upcomingDepartures(rows: Departure[], now: Date): Departure[] {
     .sort((left, right) => departureInstant(left) - departureInstant(right));
 }
 
-/** Next three departures for L1, then the next three for bus 150. */
+/** Next three departures per line: L1, L2, R21, then bus 150. */
 export function selectDepartureLines(rows: Departure[], now: Date, limit = DEPARTURE_ROW_COUNT): LineDepartures[] {
   const upcoming = upcomingDepartures(rows, now);
   return LINE_ORDER.map((line) => {
@@ -327,7 +433,7 @@ export function isDeparture(value: unknown): value is Departure {
 export function isDeparturesView(value: unknown): value is DeparturesView {
   if (!value || typeof value !== "object") return false;
   const view = value as DeparturesView;
-  return Array.isArray(view.rows) && view.rows.length <= 24 && view.rows.every(isDeparture);
+  return Array.isArray(view.rows) && view.rows.length <= MAX_DEPARTURE_ROWS && view.rows.every(isDeparture);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -342,9 +448,18 @@ function readCalls(quay: unknown): EstimatedCall[] | null {
 export function departuresFromEntur(body: unknown): DeparturesView | null {
   if (!isRecord(body) || !isRecord(body.data)) return null;
   const l1 = readCalls(body.data.l1);
+  const l2 = readCalls(body.data.l2);
+  const r21 = readCalls(body.data.r21);
   const bus = readCalls(body.data.bus);
-  if (!l1 || !bus) return null;
-  return { rows: [...l1Departures(l1), ...bus150Departures(bus)] };
+  if (!l1 || !l2 || !r21 || !bus) return null;
+  return {
+    rows: [
+      ...l1Departures(l1),
+      ...l2Departures(l2),
+      ...r21Departures(r21),
+      ...bus150Departures(bus),
+    ],
+  };
 }
 
 export async function getDepartures(fetchImpl: typeof fetch = fetch): Promise<DeparturesView> {
