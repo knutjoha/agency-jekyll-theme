@@ -510,7 +510,7 @@ body {
   }
 }
 
-/* Desktop Avganger: keep L1 / 150 visible when the right-column card is
+/* Desktop Avganger: keep line numbers visible when the right-column card is
    squeezed (about 975–1175px). Phone uses the compact stacked layout. */
 .departures-tile {
   container-type: inline-size;
