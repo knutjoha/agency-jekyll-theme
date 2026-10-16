@@ -11,14 +11,14 @@ function DepartureTime({ departure, now, compact }: { departure: Departure; now:
   const display = departureDisplay(departure, now);
   return (
     <div
+      className={compact ? undefined : "departures-chip"}
       data-cancelled={display.cancelled ? "true" : "false"}
       data-delay={display.delayLabel ?? ""}
       data-until={display.untilLabel ?? ""}
       data-tone={display.tone}
       style={{
-        flex: compact ? "1 1 0" : "0 0 84px",
-        width: compact ? undefined : 84,
-        minWidth: compact ? 0 : 84,
+        flex: compact ? "1 1 0" : undefined,
+        minWidth: compact ? 0 : undefined,
         minHeight: compact ? 56 : 62,
         boxSizing: "border-box",
         display: "flex",
@@ -92,10 +92,20 @@ function DepartureTime({ departure, now, compact }: { departure: Departure; now:
 
 function LineRow({ line, now, compact }: { line: LineDepartures; now: Date; compact: boolean }) {
   const identity = (
-    <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: compact ? 8 : 12, minWidth: 0, flex: compact ? undefined : 1 }}>
+    <div
+      className={compact ? undefined : "departures-id"}
+      style={{
+        display: "flex",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: compact ? 8 : 12,
+        minWidth: compact ? 0 : undefined,
+      }}
+    >
       <div
+        className={compact ? undefined : "departures-line-badge"}
         style={{
-          minWidth: compact ? 42 : 48,
+          minWidth: compact ? 42 : undefined,
           padding: "6px 8px",
           borderRadius: "var(--r-nested)",
           background: "var(--tile-2)",
@@ -144,14 +154,15 @@ function LineRow({ line, now, compact }: { line: LineDepartures; now: Date; comp
       </div>
     ) : (
       <div
+        className={compact ? undefined : "departures-times"}
         style={{
           display: "flex",
           flexDirection: "row",
           alignItems: "flex-start",
-          justifyContent: compact ? "space-between" : "flex-end",
+          justifyContent: compact ? "space-between" : undefined,
           gap: compact ? 6 : 8,
-          flexShrink: 0,
-          width: compact ? "100%" : "auto",
+          flexShrink: compact ? 0 : undefined,
+          width: compact ? "100%" : undefined,
         }}
       >
         {line.departures.map((departure) => (
@@ -162,13 +173,14 @@ function LineRow({ line, now, compact }: { line: LineDepartures; now: Date; comp
 
   return (
     <div
+      className={compact ? undefined : "departures-line"}
       data-line={line.line}
       data-destination={line.destination}
       style={{
         display: "flex",
-        flexDirection: compact ? "column" : "row",
-        alignItems: compact ? "stretch" : "center",
-        gap: compact ? 8 : 12,
+        flexDirection: compact ? "column" : undefined,
+        alignItems: compact ? "stretch" : undefined,
+        gap: compact ? 8 : undefined,
         minWidth: 0,
       }}
     >
@@ -191,6 +203,7 @@ export function DeparturesTile({
 }) {
   return (
     <section
+      className={compact ? undefined : "departures-tile"}
       data-region="departures"
       aria-label="Avganger fra Stabekk"
       style={{
