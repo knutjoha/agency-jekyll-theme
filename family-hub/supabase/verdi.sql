@@ -2,6 +2,7 @@
 -- Run once in the Supabase SQL Editor. Do not re-run schema.sql.
 -- This file has no project URL and no API key.
 -- BASE_NOK is 50 in the app, not stored here.
+-- person_id 'pool' is the shared extras lane. done is only meaningful on a daughter.
 
 begin;
 
@@ -23,9 +24,10 @@ create table if not exists public.verdi_skips (
 create table if not exists public.verdi_extras (
   id text primary key,
   week_id text not null references public.verdi_week (id) on delete cascade,
-  person_id text not null check (person_id in ('amelia', 'hedda', 'maja')),
+  person_id text not null check (person_id in ('amelia', 'hedda', 'maja', 'pool')),
   title text not null check (char_length(title) between 1 and 200),
   amount_nok integer not null check (amount_nok >= 1),
+  done boolean not null default false,
   sort_order integer not null,
   updated_at timestamptz not null default now()
 );

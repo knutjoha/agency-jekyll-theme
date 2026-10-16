@@ -7,6 +7,8 @@ export const MINUS = "\u2212";
 
 export const VERDI_DAUGHTERS = ["amelia", "hedda", "maja"] as const;
 export type VerdiDaughterId = (typeof VERDI_DAUGHTERS)[number];
+export const POOL_ID = "pool" as const;
+export type VerdiOwnerId = VerdiDaughterId | typeof POOL_ID;
 
 export const DEFAULT_BASICS: VerdiBasic[] = [
   { id: "gangen", title: "Ryddig i gangen" },
@@ -27,6 +29,7 @@ export type VerdiExtra = {
   id: string;
   title: string;
   amountNok: number;
+  done: boolean;
   editing?: boolean;
 };
 
@@ -43,14 +46,15 @@ export type VerdiWeek = {
   locked: boolean;
   lockedAt: string | null;
   basics: VerdiBasic[];
+  pool: VerdiExtra[];
   lanes: VerdiLane[];
 };
 
 type Parsed<T> = { ok: true; value: T } | { ok: false };
 
 export type SkipWrite = { week: string; personId: VerdiDaughterId; skips: number };
-export type ExtraCreate = { week: string; personId: VerdiDaughterId; id: string; title: string; amountNok: number };
-export type ExtraPatch = { week: string; id: string; title?: string; amountNok?: number };
+export type ExtraCreate = { week: string; personId: VerdiOwnerId; id: string; title: string; amountNok: number; done?: boolean };
+export type ExtraPatch = { week: string; id: string; title?: string; amountNok?: number; personId?: VerdiOwnerId; done?: boolean };
 export type ExtraDelete = { week: string; id: string };
 export type BasicWrite = { id: string; title: string };
 export type LockWrite = { week: string };
@@ -75,11 +79,15 @@ export function isVerdiDaughter(value: string): value is VerdiDaughterId {
   return (VERDI_DAUGHTERS as readonly string[]).includes(value);
 }
 
-export function extrasSum(extras: { amountNok: number }[]): number {
-  return extras.reduce((sum, extra) => sum + extra.amountNok, 0);
+export function isVerdiOwner(value: string): value is VerdiOwnerId {
+  return value === POOL_ID || isVerdiDaughter(value);
 }
 
-export function shownNok(skips: number, extras: { amountNok: number }[]): number {
+export function extrasSum(extras: { amountNok: number; done?: boolean }[]): number {
+  return extras.reduce((sum, extra) => sum + (extra.done ? extra.amountNok : 0), 0);
+}
+
+export function shownNok(skips: number, extras: { amountNok: number; done?: boolean }[]): number {
   return BASE_NOK + extrasSum(extras) - SKIP_NOK * clampSkips(skips);
 }
 
@@ -153,8 +161,16 @@ export function emptyWeek(now = new Date()): VerdiWeek {
     locked: false,
     lockedAt: null,
     basics: DEFAULT_BASICS.map((basic) => ({ ...basic })),
+    pool: [],
     lanes: emptyLanes(),
   };
+}
+
+export function asExtra(input: { id: string; title: string; amountNok: number; done?: boolean }): VerdiExtra | null {
+  const id = cleanId(input.id);
+  const title = cleanText(input.title, 200);
+  if (!id || !title || !Number.isSafeInteger(input.amountNok) || input.amountNok < 1) return null;
+  return { id, title, amountNok: input.amountNok, done: Boolean(input.done) };
 }
 
 export function weekFromParts(input: {
@@ -163,26 +179,29 @@ export function weekFromParts(input: {
   lockedAt?: string | null;
   basics?: VerdiBasic[] | null;
   skips?: Partial<Record<VerdiDaughterId, number>>;
-  extras?: { id: string; personId: string; title: string; amountNok: number }[];
+  extras?: { id: string; personId: string; title: string; amountNok: number; done?: boolean }[];
 }): VerdiWeek | null {
   const monday = parseMondayWeek(input.week);
   if (!monday) return null;
   const basics = normalizedBasics(input.basics);
   const extrasByPerson = new Map<VerdiDaughterId, VerdiExtra[]>();
+  const pool: VerdiExtra[] = [];
   for (const personId of VERDI_DAUGHTERS) extrasByPerson.set(personId, []);
   for (const extra of input.extras ?? []) {
-    if (!isVerdiDaughter(extra.personId)) continue;
-    const title = cleanText(extra.title, 200);
-    if (!title || !Number.isSafeInteger(extra.amountNok) || extra.amountNok < 1) continue;
-    const id = cleanId(extra.id);
-    if (!id) continue;
-    extrasByPerson.get(extra.personId)?.push({ id, title, amountNok: extra.amountNok });
+    const parsed = asExtra(extra);
+    if (!parsed || !isVerdiOwner(extra.personId)) continue;
+    if (extra.personId === POOL_ID) {
+      pool.push(parsed);
+      continue;
+    }
+    extrasByPerson.get(extra.personId)?.push(parsed);
   }
   return {
     ...verdiWeekMeta(monday),
     locked: Boolean(input.locked),
     lockedAt: input.lockedAt ?? null,
     basics,
+    pool,
     lanes: VERDI_DAUGHTERS.map((personId) => ({
       personId,
       skips: clampSkips(input.skips?.[personId] ?? 0),
@@ -211,12 +230,18 @@ export function parseSkipWrite(input: unknown): Parsed<SkipWrite> {
 export function parseExtraCreate(input: unknown): Parsed<ExtraCreate> {
   if (!isRecord(input)) return { ok: false };
   const week = parseMondayWeek(input.week);
-  const personId = typeof input.personId === "string" && isVerdiDaughter(input.personId) ? input.personId : null;
+  const personId = typeof input.personId === "string" && isVerdiOwner(input.personId) ? input.personId : null;
   const id = cleanId(input.id);
   const title = cleanText(input.title, 200);
   const amountNok = parseAmount(input.amountNok);
   if (!week || !personId || !id || !title || amountNok === null) return { ok: false };
-  return { ok: true, value: { week, personId, id, title, amountNok } };
+  let done = false;
+  if ("done" in input) {
+    if (typeof input.done !== "boolean") return { ok: false };
+    done = input.done;
+  }
+  if (personId === POOL_ID) done = false;
+  return { ok: true, value: { week, personId, id, title, amountNok, done } };
 }
 
 export function parseExtraPatch(input: unknown): Parsed<ExtraPatch> {
@@ -235,7 +260,18 @@ export function parseExtraPatch(input: unknown): Parsed<ExtraPatch> {
     if (amountNok === null) return { ok: false };
     patch.amountNok = amountNok;
   }
-  if (patch.title === undefined && patch.amountNok === undefined) return { ok: false };
+  if ("personId" in input) {
+    if (typeof input.personId !== "string" || !isVerdiOwner(input.personId)) return { ok: false };
+    patch.personId = input.personId;
+  }
+  if ("done" in input) {
+    if (typeof input.done !== "boolean") return { ok: false };
+    patch.done = input.done;
+  }
+  if (patch.personId === POOL_ID) patch.done = false;
+  if (patch.title === undefined && patch.amountNok === undefined && patch.personId === undefined && patch.done === undefined) {
+    return { ok: false };
+  }
   return { ok: true, value: patch };
 }
 

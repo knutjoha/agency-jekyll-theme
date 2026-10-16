@@ -27,7 +27,10 @@ test("BASE_NOK is 50 and the formula is 50 + extras − 10 * skips", () => {
   assert.equal(SKIP_NOK, 10);
   assert.equal(shownNok(0, []), 50);
   assert.equal(shownNok(1, []), 40);
-  assert.equal(shownNok(2, [{ amountNok: 50 }]), 80);
+  assert.equal(shownNok(2, [{ amountNok: 50, done: true }]), 80);
+  assert.equal(shownNok(0, [{ amountNok: 50 }]), 50);
+  assert.equal(shownNok(0, [{ amountNok: 50, done: false }]), 50);
+  assert.equal(shownNok(0, [{ amountNok: 50, done: true }]), 100);
   assert.equal(shownNok(5, []), 0);
   assert.equal(shownNok(6, []), -10);
 });
@@ -64,6 +67,7 @@ test("week id must be a Monday, like Middag", () => {
   const week = emptyWeek(new Date("2026-10-11T12:00:00.000Z"));
   assert.equal(week.week, "2026-10-05");
   assert.equal(week.locked, false);
+  assert.equal(week.pool.length, 0);
   assert.equal(week.lanes.length, 3);
   assert.deepEqual(
     week.lanes.map((lane) => lane.personId),
@@ -106,6 +110,23 @@ test("writes parse daughters only and reject a locked week at the guard", () => 
   );
   assert.equal(parseExtraPatch({ week: "2026-10-05", id: "x", title: "Ok", amountNok: 20 }).ok, true);
   assert.equal(parseExtraPatch({ week: "2026-10-05", id: "x" }).ok, false);
+  const poolCreate = parseExtraCreate({
+    week: "2026-10-05",
+    personId: "pool",
+    id: "p",
+    title: "Tømme oppvaskmaskin",
+    amountNok: 20,
+    done: true,
+  });
+  assert.equal(poolCreate.ok && poolCreate.value.personId, "pool");
+  assert.equal(poolCreate.ok && poolCreate.value.done, false);
+  const claim = parseExtraPatch({ week: "2026-10-05", id: "p", personId: "amelia" });
+  assert.equal(claim.ok && claim.value.personId, "amelia");
+  const complete = parseExtraPatch({ week: "2026-10-05", id: "p", done: true });
+  assert.equal(complete.ok && complete.value.done, true);
+  const backToPool = parseExtraPatch({ week: "2026-10-05", id: "p", personId: "pool", done: true });
+  assert.equal(backToPool.ok && backToPool.value.personId, "pool");
+  assert.equal(backToPool.ok && backToPool.value.done, false);
   assert.equal(parseExtraDelete({ week: "2026-10-05", id: "x" }).ok, true);
   assert.equal(parseBasicWrite({ id: "gangen", title: "Ryddig i gangen" }).ok, true);
   assert.equal(parseBasicWrite({ id: "other", title: "Nope" }).ok, false);
@@ -121,15 +142,20 @@ test("weekFromParts keeps a locked week locked and drops parent extras", () => {
     basics: [{ id: "gangen", title: "Sko i hylla" }],
     skips: { amelia: 2, hedda: -3 },
     extras: [
-      { id: "a", personId: "maja", title: "Støvsuge", amountNok: 50 },
+      { id: "a", personId: "maja", title: "Støvsuge", amountNok: 50, done: true },
       { id: "b", personId: "ulla", title: "Nope", amountNok: 10 },
+      { id: "c", personId: "pool", title: "Tømme oppvaskmaskin", amountNok: 20 },
     ],
   });
   assert.equal(week?.locked, true);
   assert.equal(week?.lanes.find((lane) => lane.personId === "amelia")?.skips, 2);
   assert.equal(week?.lanes.find((lane) => lane.personId === "hedda")?.skips, 0);
   assert.equal(week?.lanes.find((lane) => lane.personId === "maja")?.extras[0]?.amountNok, 50);
+  assert.equal(week?.lanes.find((lane) => lane.personId === "maja")?.extras[0]?.done, true);
   assert.equal(week?.lanes.find((lane) => lane.personId === "amelia")?.extras.length, 0);
+  assert.equal(week?.pool.length, 1);
+  assert.equal(week?.pool[0]?.title, "Tømme oppvaskmaskin");
+  assert.equal(week?.pool[0]?.done, false);
   assert.equal(week?.basics[0]?.title, "Sko i hylla");
   assert.equal(week?.basics[1]?.title, "Ta ut av gymbagen");
   assert.equal(shownNok(2, []), 30);

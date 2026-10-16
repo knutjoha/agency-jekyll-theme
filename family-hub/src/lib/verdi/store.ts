@@ -5,6 +5,7 @@ import { osloDateKey } from "@/lib/oslo";
 import { getSupabase } from "@/lib/supabase/admin";
 import {
   DEFAULT_BASICS,
+  POOL_ID,
   VERDI_DAUGHTERS,
   parseBasicWrite,
   parseExtraCreate,
@@ -31,7 +32,7 @@ export type WriteResult = {
 
 type WeekRow = { id: string; locked: boolean; locked_at: string | null };
 type SkipRow = { person_id: string; skips: number };
-type ExtraRow = { id: string; person_id: string; title: string; amount_nok: number; sort_order: number };
+type ExtraRow = { id: string; person_id: string; title: string; amount_nok: number; done: boolean; sort_order: number };
 type BasicRow = { id: string; title: string; sort_order: number };
 
 function safeError(error: { code?: string; message?: string }): string {
@@ -89,6 +90,7 @@ function weekFromRows(
       personId: row.person_id,
       title: row.title,
       amountNok: row.amount_nok,
+      done: Boolean(row.done),
     })),
   });
 }
@@ -103,7 +105,7 @@ export async function loadVerdi(options?: { snapshot?: boolean; now?: Date }): P
   const [weekResult, skipResult, extraResult, basicResult] = await Promise.all([
     supabase.from("verdi_week").select("id, locked, locked_at").eq("id", monday).maybeSingle(),
     supabase.from("verdi_skips").select("person_id, skips").eq("week_id", monday),
-    supabase.from("verdi_extras").select("id, person_id, title, amount_nok, sort_order").eq("week_id", monday),
+    supabase.from("verdi_extras").select("id, person_id, title, amount_nok, done, sort_order").eq("week_id", monday),
     supabase.from("verdi_basics").select("id, title, sort_order").order("sort_order", { ascending: true }),
   ]);
 
@@ -203,6 +205,7 @@ export async function createExtra(input: unknown): Promise<WriteResult> {
     person_id: parsed.value.personId,
     title: parsed.value.title,
     amount_nok: parsed.value.amountNok,
+    done: parsed.value.personId === POOL_ID ? false : Boolean(parsed.value.done),
     sort_order: sortOrder,
   });
   if (error) {
@@ -220,11 +223,35 @@ export async function updateExtra(input: unknown): Promise<WriteResult> {
   const locked = await weekIsLocked(parsed.value.week);
   if (locked !== false) return { persisted: false };
 
-  const patch: { title?: string; amount_nok?: number; updated_at: string } = {
+  const patch: {
+    title?: string;
+    amount_nok?: number;
+    person_id?: string;
+    done?: boolean;
+    sort_order?: number;
+    updated_at: string;
+  } = {
     updated_at: new Date().toISOString(),
   };
   if (parsed.value.title !== undefined) patch.title = parsed.value.title;
   if (parsed.value.amountNok !== undefined) patch.amount_nok = parsed.value.amountNok;
+  if (parsed.value.done !== undefined) patch.done = parsed.value.done;
+  if (parsed.value.personId !== undefined) {
+    patch.person_id = parsed.value.personId;
+    if (parsed.value.personId === POOL_ID) patch.done = false;
+    const { data: latest, error: latestError } = await supabase
+      .from("verdi_extras")
+      .select("sort_order")
+      .eq("week_id", parsed.value.week)
+      .eq("person_id", parsed.value.personId)
+      .order("sort_order", { ascending: false })
+      .limit(1);
+    if (latestError) {
+      logFailure("verdi extra move sort", latestError);
+      return { persisted: false };
+    }
+    patch.sort_order = ((latest?.[0] as { sort_order?: number } | undefined)?.sort_order ?? -1) + 1;
+  }
   const { data, error } = await supabase
     .from("verdi_extras")
     .update(patch)

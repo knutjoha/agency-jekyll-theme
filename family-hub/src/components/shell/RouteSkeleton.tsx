@@ -349,6 +349,16 @@ function VerdiWideSkeleton() {
             <Bone style={{ width: "100%", height: 46, borderRadius: 12 }} />
           </div>
         ))}
+        <div className="sk-tile sk-todo-lane">
+          <div className="sk-person-row">
+            <Bone style={{ width: 30, height: 30, borderRadius: "var(--r-full)" }} />
+            <div className="sk-stack" style={{ flex: 1 }}>
+              <Bone style={{ width: "58%", height: 14 }} />
+            </div>
+          </div>
+          <Bone style={{ width: "100%", height: 40, borderRadius: 12 }} />
+          <Bone style={{ width: "100%", height: 46, borderRadius: 12 }} />
+        </div>
       </div>
     </div>
   );
@@ -369,6 +379,10 @@ function VerdiPhoneSkeleton() {
             <Bone style={{ width: 44, height: 10 }} />
           </div>
         ))}
+        <div className="sk-stack" style={{ flex: 1, alignItems: "center", gap: 6 }}>
+          <Bone style={{ width: 42, height: 42, borderRadius: "var(--r-full)" }} />
+          <Bone style={{ width: 40, height: 10 }} />
+        </div>
       </div>
       <div className="sk-row sk-between">
         <Bone style={{ width: 88, height: 18 }} />

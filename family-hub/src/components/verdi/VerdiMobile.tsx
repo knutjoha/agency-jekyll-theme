@@ -8,8 +8,9 @@ import {
   CompleteWeekButton,
   CreateExtraButton,
   DraftEditor,
-  ExtraEditor,
+  ExtraCard,
   FieldLabel,
+  PoolMark,
   SkipControl,
   UndoToast,
 } from "@/components/verdi/VerdiEditors";
@@ -17,7 +18,15 @@ import { useCancelOnOutsidePress, useVerdiActions } from "@/components/verdi/use
 import { people } from "@/data/fixture";
 import type { Person, WeatherView } from "@/data/types";
 import type { OsloNow } from "@/lib/oslo";
-import { extraDraftValid, formatKr, shownNok, type VerdiDaughterId, type VerdiExtra, type VerdiWeek } from "@/lib/verdi/model";
+import {
+  POOL_ID,
+  formatKr,
+  shownNok,
+  type VerdiDaughterId,
+  type VerdiExtra,
+  type VerdiOwnerId,
+  type VerdiWeek,
+} from "@/lib/verdi/model";
 
 const ACTION = 84;
 const GAP = 8;
@@ -45,18 +54,67 @@ export function VerdiMobile({
   week: VerdiWeek;
   persisted: boolean;
 }) {
-  const [selectedId, setSelectedId] = useState<VerdiDaughterId>("amelia");
+  const [selectedId, setSelectedId] = useState<VerdiOwnerId>("amelia");
   const actions = useVerdiActions(initial, persisted);
   const { week, drafts, editingBasicId, basicTitle } = actions;
-  const selected = week.lanes.find((lane) => lane.personId === selectedId) ?? week.lanes[0];
-  const person = personFor(selected.personId);
-  const draft = drafts[selected.personId];
-  const editingExtra = selected.extras.find((extra) => extra.editing);
+  const selected = week.lanes.find((lane) => lane.personId === selectedId) ?? null;
+  const poolSelected = selectedId === POOL_ID;
+  const person = selected ? personFor(selected.personId) : null;
+  const ownerId: VerdiOwnerId = poolSelected ? POOL_ID : selected?.personId ?? "amelia";
+  const draft = drafts[ownerId];
+  const extras = poolSelected ? week.pool : selected?.extras ?? [];
+  const editingExtra = extras.find((extra) => extra.editing);
   useCancelOnOutsidePress(Boolean(editingExtra || draft || editingBasicId), () => {
     if (editingExtra) actions.cancelEditExtra(editingExtra.id);
-    if (draft) actions.cancelDraft(selected.personId);
+    if (draft) actions.cancelDraft(ownerId);
     if (editingBasicId) actions.cancelBasic();
   });
+
+  function extraHandlers(extra: VerdiExtra) {
+    return {
+      extra,
+      locked: week.locked,
+      phone: true as const,
+      onOpen: () => actions.beginEditExtra(extra.id),
+      onTitle: (title: string) => actions.setExtra(extra.id, { title }),
+      onAmount: (amount: string) => {
+        const amountNok = Number(amount);
+        actions.setExtra(extra.id, { amountNok: Number.isSafeInteger(amountNok) ? amountNok : extra.amountNok });
+      },
+      onSave: () => actions.saveExtra(extra),
+      onDelete: () => actions.deleteExtra(extra.id),
+    };
+  }
+
+  function extraRow(extra: VerdiExtra, options?: { pickup?: boolean; personId?: VerdiDaughterId; pool?: boolean }) {
+    const pickup = Boolean(options?.pickup);
+    const pool = Boolean(options?.pool);
+    const claimFor = options?.personId;
+    const handlers = extraHandlers(extra);
+    const card = (
+      <ExtraCard
+        {...handlers}
+        pool={pool}
+        pickup={pickup}
+        onOpen={pickup ? undefined : handlers.onOpen}
+        onToggleDone={pickup || pool ? undefined : () => actions.toggleDone(extra.id)}
+        onClaim={pickup && claimFor ? () => actions.claimExtra(extra.id, claimFor) : undefined}
+      />
+    );
+    if (extra.editing || week.locked || pickup) return <div key={extra.id}>{card}</div>;
+    return (
+      <SwipeRow
+        key={extra.id}
+        open={actions.revealedId === extra.id}
+        onOpenChange={(open) => (open ? actions.reveal(extra.id) : actions.closeReveal())}
+        onDelete={() => actions.deleteExtra(extra.id)}
+      >
+        {card}
+      </SwipeRow>
+    );
+  }
+
+  const shown = selected ? shownNok(selected.skips, selected.extras) : null;
 
   return (
     <div
@@ -84,16 +142,16 @@ export function VerdiMobile({
       <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
         {week.lanes.map((lane) => {
           const member = personFor(lane.personId);
-          const selectedPerson = lane.personId === selected.personId;
+          const selectedPerson = lane.personId === selectedId;
           const label = shortName(member.name);
-          const shown = shownNok(lane.skips, lane.extras);
+          const laneShown = shownNok(lane.skips, lane.extras);
           return (
             <button
               key={lane.personId}
               type="button"
               data-person={lane.personId}
               aria-pressed={selectedPerson}
-              aria-label={`${label} ${shown}`}
+              aria-label={`${label} ${laneShown}`}
               onClick={() => {
                 actions.closeReveal();
                 setSelectedId(lane.personId);
@@ -138,110 +196,146 @@ export function VerdiMobile({
                   whiteSpace: "nowrap",
                 }}
               >
-                {label} {shown}
+                {label} {laneShown}
               </span>
             </button>
           );
         })}
+        <button
+          type="button"
+          data-person={POOL_ID}
+          aria-pressed={poolSelected}
+          aria-label="Ledige"
+          onClick={() => {
+            actions.closeReveal();
+            setSelectedId(POOL_ID);
+          }}
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 6,
+            padding: 0,
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
+          }}
+        >
+          <span
+            style={{
+              borderRadius: "var(--r-full)",
+              outline: poolSelected ? "2px solid var(--accent)" : "none",
+              outlineOffset: poolSelected ? -1 : undefined,
+            }}
+          >
+            <PoolMark size={42} />
+          </span>
+          <span
+            style={{
+              fontFamily: "var(--font-body)",
+              fontSize: 11,
+              color: poolSelected ? "var(--text)" : "var(--text-muted)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Ledige
+          </span>
+        </button>
       </div>
 
       <div style={{ display: "flex", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 2px 0" }}>
-        <div style={{ fontFamily: "var(--font-heading)", fontSize: 20, color: "var(--text)", minWidth: 0 }}>{person.name}</div>
-        <div data-shown={shownNok(selected.skips, selected.extras)} style={{ fontFamily: "var(--font-data)", fontSize: 16, color: "var(--text)", whiteSpace: "nowrap" }}>
-          {formatKr(shownNok(selected.skips, selected.extras))}
+        <div style={{ fontFamily: "var(--font-heading)", fontSize: 20, color: "var(--text)", minWidth: 0 }}>
+          {poolSelected ? "Ledige" : person?.name}
         </div>
+        {shown != null ? (
+          <div data-shown={shown} style={{ fontFamily: "var(--font-data)", fontSize: 16, color: "var(--text)", whiteSpace: "nowrap" }}>
+            {formatKr(shown)}
+          </div>
+        ) : null}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <FieldLabel>Faste oppgaver</FieldLabel>
-        {week.basics.map((basic) =>
-          editingBasicId === basic.id ? (
-            <article
-              key={basic.id}
-              data-verdi-editor="true"
-              data-basic={basic.id}
-              style={{
-                padding: 12,
-                background: "var(--tile)",
-                borderRadius: "var(--r-nested)",
-                outline: "1.5px solid var(--accent)",
-                outlineOffset: -0.75,
-              }}
-            >
-              <BasicEditor phone title={basicTitle} onTitle={actions.setBasicTitle} onSave={actions.saveBasic} />
-            </article>
-          ) : (
-            <button
-              key={basic.id}
-              type="button"
-              data-basic={basic.id}
-              onClick={() => actions.beginEditBasic(basic.id)}
-              disabled={week.locked}
-              style={{
-                width: "100%",
-                textAlign: "left",
-                padding: "12px",
-                border: "none",
-                background: "var(--tile)",
-                borderRadius: "var(--r-nested)",
-                color: "var(--text)",
-                fontFamily: "var(--font-body)",
-                fontSize: 15,
-                cursor: week.locked ? "default" : "pointer",
-              }}
-            >
-              {basic.title}
-            </button>
-          ),
-        )}
-      </div>
+      {poolSelected ? null : (
+        <>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <FieldLabel>Faste oppgaver</FieldLabel>
+            {week.basics.map((basic) =>
+              editingBasicId === basic.id ? (
+                <article
+                  key={basic.id}
+                  data-verdi-editor="true"
+                  data-basic={basic.id}
+                  style={{
+                    padding: 12,
+                    background: "var(--tile)",
+                    borderRadius: "var(--r-nested)",
+                    outline: "1.5px solid var(--accent)",
+                    outlineOffset: -0.75,
+                  }}
+                >
+                  <BasicEditor phone title={basicTitle} onTitle={actions.setBasicTitle} onSave={actions.saveBasic} />
+                </article>
+              ) : (
+                <button
+                  key={basic.id}
+                  type="button"
+                  data-basic={basic.id}
+                  onClick={() => actions.beginEditBasic(basic.id)}
+                  disabled={week.locked}
+                  style={{
+                    width: "100%",
+                    textAlign: "left",
+                    padding: "12px",
+                    border: "none",
+                    background: "var(--tile)",
+                    borderRadius: "var(--r-nested)",
+                    color: "var(--text)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: 15,
+                    cursor: week.locked ? "default" : "pointer",
+                  }}
+                >
+                  {basic.title}
+                </button>
+              ),
+            )}
+          </div>
 
-      <SkipControl
-        skips={selected.skips}
-        locked={week.locked}
-        onMinus={() => actions.setSkips(selected.personId, -1)}
-        onPlus={() => actions.setSkips(selected.personId, 1)}
-      />
+          {selected ? (
+            <SkipControl
+              skips={selected.skips}
+              locked={week.locked}
+              onMinus={() => actions.setSkips(selected.personId, -1)}
+              onPlus={() => actions.setSkips(selected.personId, 1)}
+            />
+          ) : null}
+
+          {week.pool.length ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <FieldLabel>Ledige</FieldLabel>
+              {week.pool.map((extra) => extraRow(extra, { pickup: true, personId: selected?.personId }))}
+            </div>
+          ) : null}
+        </>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <FieldLabel>Ekstra</FieldLabel>
-        {selected.extras.map((extra) => {
-          const card = (
-            <ExtraCard
-              extra={extra}
-              locked={week.locked}
-              onOpen={() => actions.beginEditExtra(extra.id)}
-              onTitle={(title) => actions.setExtra(extra.id, { title })}
-              onAmount={(amount) => {
-                const amountNok = Number(amount);
-                actions.setExtra(extra.id, { amountNok: Number.isSafeInteger(amountNok) ? amountNok : extra.amountNok });
-              }}
-              onSave={() => actions.saveExtra(extra)}
-              onDelete={() => actions.deleteExtra(extra.id)}
-            />
-          );
-          if (extra.editing || week.locked) return <div key={extra.id}>{card}</div>;
-          return (
-            <SwipeRow
-              key={extra.id}
-              open={actions.revealedId === extra.id}
-              onOpenChange={(open) => (open ? actions.reveal(extra.id) : actions.closeReveal())}
-              onDelete={() => actions.deleteExtra(extra.id)}
-            >
-              {card}
-            </SwipeRow>
-          );
-        })}
+        {extras.map((extra) => extraRow(extra, { pool: poolSelected }))}
         {draft ? (
           <DraftEditor
             phone
             draft={draft}
-            onTitle={(title) => actions.setDraft(selected.personId, { title })}
-            onAmount={(amount) => actions.setDraft(selected.personId, { amount })}
-            onSave={() => actions.saveDraft(selected.personId)}
+            onTitle={(title) => actions.setDraft(ownerId, { title })}
+            onAmount={(amount) => actions.setDraft(ownerId, { amount })}
+            onSave={() => actions.saveDraft(ownerId)}
           />
         ) : week.locked ? null : (
-          <CreateExtraButton label={`Ny ekstra til ${shortName(person.name)}`} onClick={() => actions.openDraft(selected.personId)} />
+          <CreateExtraButton
+            label={poolSelected || !person ? "Ny ekstra" : `Ny ekstra til ${shortName(person.name)}`}
+            onClick={() => actions.openDraft(ownerId)}
+          />
         )}
       </div>
 
@@ -259,66 +353,6 @@ export function VerdiMobile({
 
       {actions.removed ? <UndoToast phone removed={actions.removed} onUndo={actions.undo} /> : null}
     </div>
-  );
-}
-
-function ExtraCard({
-  extra,
-  locked,
-  onOpen,
-  onTitle,
-  onAmount,
-  onSave,
-  onDelete,
-}: {
-  extra: VerdiExtra;
-  locked: boolean;
-  onOpen: () => void;
-  onTitle: (title: string) => void;
-  onAmount: (amount: string) => void;
-  onSave: () => void;
-  onDelete: () => void;
-}) {
-  const editing = Boolean(extra.editing);
-  return (
-    <article
-      data-extra={extra.id}
-      data-verdi-editor={editing ? "true" : undefined}
-      onClick={() => {
-        if (!editing && !locked) onOpen();
-      }}
-      style={{
-        width: "100%",
-        boxSizing: "border-box",
-        display: "flex",
-        flexDirection: "column",
-        gap: 9,
-        padding: 12,
-        background: "var(--tile)",
-        borderRadius: "var(--r-nested)",
-        outline: editing ? "1.5px solid var(--accent)" : "none",
-        outlineOffset: editing ? -0.75 : undefined,
-        cursor: editing || locked ? "auto" : "pointer",
-      }}
-    >
-      {editing ? (
-        <ExtraEditor
-          phone
-          title={extra.title}
-          amountNok={extra.amountNok}
-          onTitle={onTitle}
-          onAmount={onAmount}
-          onSave={onSave}
-          onDelete={onDelete}
-          canSave={extraDraftValid(extra.title, String(extra.amountNok))}
-        />
-      ) : (
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: 11, width: "100%" }}>
-          <div style={{ flex: 1, minWidth: 0, fontFamily: "var(--font-body)", fontSize: 15, color: "var(--text)" }}>{extra.title}</div>
-          <div style={{ flexShrink: 0, fontFamily: "var(--font-data)", fontSize: 14, color: "var(--text-2)" }}>{formatKr(extra.amountNok)}</div>
-        </div>
-      )}
-    </article>
   );
 }
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { Minus, Plus, Trash2, Undo2 } from "lucide-react";
-import { useEffect, useRef, type ReactNode } from "react";
+import { GripVertical, Inbox, Minus, Plus, Trash2, Undo2 } from "lucide-react";
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { CheckBox } from "@/components/todo/TodoEditor";
 import type { ExtraDraft, RemovedExtra } from "@/components/verdi/use-verdi-actions";
-import { extraDraftValid, skipLabel } from "@/lib/verdi/model";
+import { extraDraftValid, formatKr, skipLabel, type VerdiExtra } from "@/lib/verdi/model";
 
 const DELETE_BG = "#3A1C1C";
 const DELETE_FG = "#FF6B6B";
@@ -120,6 +121,7 @@ export function CreateExtraButton({ label, onClick }: { label: string; onClick: 
   return (
     <button
       type="button"
+      data-create="true"
       onClick={onClick}
       style={{
         width: "100%",
@@ -443,6 +445,183 @@ export function CompleteWeekButton({ locked, onComplete }: { locked: boolean; on
     <button type="button" className="pill-primary" onClick={onComplete} style={{ ...savePill, padding: "9px 18px", fontSize: 14 }}>
       Fullfør uke
     </button>
+  );
+}
+
+export function PoolMark({ size }: { size: number }) {
+  const icon = size >= 40 ? 18 : 14;
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        flexShrink: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: "var(--r-full)",
+        background: "var(--tile-3)",
+      }}
+    >
+      <Inbox size={icon} color="var(--text-muted)" />
+    </div>
+  );
+}
+
+export function ExtraCard({
+  extra,
+  locked,
+  phone,
+  pool,
+  pickup,
+  dragging,
+  onOpen,
+  onTitle,
+  onAmount,
+  onSave,
+  onDelete,
+  onToggleDone,
+  onClaim,
+  onGrip,
+}: {
+  extra: VerdiExtra;
+  locked: boolean;
+  phone?: boolean;
+  pool?: boolean;
+  pickup?: boolean;
+  dragging?: boolean;
+  onOpen?: () => void;
+  onTitle?: (title: string) => void;
+  onAmount?: (amount: string) => void;
+  onSave?: () => void;
+  onDelete?: () => void;
+  onToggleDone?: () => void;
+  onClaim?: () => void;
+  onGrip?: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+}) {
+  const editing = Boolean(extra.editing);
+  const canOpen = Boolean(onOpen) && !editing && !locked && !pickup;
+  return (
+    <article
+      data-extra={extra.id}
+      data-done={extra.done ? "true" : undefined}
+      data-pool={pool ? "true" : undefined}
+      data-pickup={pickup ? "true" : undefined}
+      data-verdi-editor={editing ? "true" : undefined}
+      role={canOpen ? "button" : undefined}
+      tabIndex={canOpen ? 0 : undefined}
+      onClick={() => {
+        if (canOpen) onOpen?.();
+      }}
+      onKeyDown={(event) => {
+        if (!canOpen) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpen?.();
+        }
+      }}
+      style={{
+        width: "100%",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        gap: 9,
+        padding: 12,
+        background: phone ? "var(--tile)" : "var(--tile-2)",
+        borderRadius: "var(--r-nested)",
+        outline: editing ? "1.5px solid var(--accent)" : "none",
+        outlineOffset: editing ? -0.75 : undefined,
+        cursor: canOpen ? "pointer" : editing || locked ? "auto" : "default",
+        opacity: dragging ? 0.4 : extra.done && !editing ? 0.85 : 1,
+      }}
+    >
+      {editing && onTitle && onAmount && onSave && onDelete ? (
+        <ExtraEditor
+          phone={phone}
+          title={extra.title}
+          amountNok={extra.amountNok}
+          onTitle={onTitle}
+          onAmount={onAmount}
+          onSave={onSave}
+          onDelete={onDelete}
+          canSave={extraDraftValid(extra.title, String(extra.amountNok))}
+        />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "row", alignItems: "flex-start", gap: phone ? 11 : 10, width: "100%" }}>
+          {pool && onGrip && !locked ? (
+            <button
+              type="button"
+              aria-label={`Flytt ${extra.title}`}
+              data-grip="true"
+              onPointerDown={(event) => {
+                event.stopPropagation();
+                onGrip(event);
+              }}
+              onClick={(event) => event.stopPropagation()}
+              style={{
+                width: 22,
+                height: 22,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 0,
+                marginTop: 1,
+                border: "none",
+                background: "transparent",
+                cursor: "grab",
+                color: "var(--text-muted)",
+              }}
+            >
+              <GripVertical size={16} color="var(--text-muted)" />
+            </button>
+          ) : null}
+          {!pool && onToggleDone ? (
+            <CheckBox done={Boolean(extra.done)} label={extra.title} onToggle={onToggleDone} />
+          ) : null}
+          <div
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontFamily: "var(--font-body)",
+              fontSize: phone ? 15 : 14,
+              color: extra.done ? "var(--text-muted)" : "var(--text)",
+              textDecoration: extra.done ? "line-through" : "none",
+            }}
+          >
+            {extra.title}
+          </div>
+          <div
+            style={{
+              flexShrink: 0,
+              fontFamily: "var(--font-data)",
+              fontSize: 14,
+              color: extra.done ? "var(--text-muted)" : "var(--text-2)",
+            }}
+          >
+            {formatKr(extra.amountNok)}
+          </div>
+          {pickup && onClaim && !locked ? (
+            <button
+              type="button"
+              className="pill-ghost"
+              data-ta={extra.id}
+              onClick={(event) => {
+                event.stopPropagation();
+                onClaim();
+              }}
+              style={{
+                ...savePill,
+                padding: "7px 14px",
+                fontSize: 13,
+              }}
+            >
+              Ta
+            </button>
+          ) : null}
+        </div>
+      )}
+    </article>
   );
 }
 
