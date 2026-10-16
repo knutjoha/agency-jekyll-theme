@@ -163,6 +163,7 @@ export type WeatherDayPart = {
   name: string;
   startHour: number;
   endHour: number;
+  temperature: number | null;
   symbol: WeatherSymbol | null;
   precipitating: boolean;
   condition: string;

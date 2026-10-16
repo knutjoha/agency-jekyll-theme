@@ -103,6 +103,7 @@ function isWeatherDayPart(value: unknown): value is WeatherDayPart {
     Number.isFinite(part.endHour) &&
     typeof part.condition === "string" &&
     typeof part.precipitating === "boolean" &&
+    (part.temperature === null || (typeof part.temperature === "number" && Number.isFinite(part.temperature))) &&
     (part.symbol === null || WEATHER_SYMBOLS.has(part.symbol))
   );
 }

@@ -35,7 +35,7 @@ function Hold({ region, phase, section }: { region: string; phase: SectionPhase;
       className={region === "weather" ? "sk-tile sk-weather" : "sk-tile"}
       style={{
         width: "100%",
-        minHeight: region === "weather" ? 260 : 120,
+        minHeight: region === "weather" ? 200 : 120,
         boxSizing: "border-box",
         display: "flex",
         flexDirection: "column",

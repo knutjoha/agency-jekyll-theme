@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { fixtureWeather } from "../data/fixture.ts";
 import { isWeatherView } from "./home-cache.ts";
 import { osloParts } from "./oslo.ts";
-import { temperatureLineCaptions, weatherTileStats } from "./weather-format.ts";
+import { weatherTileStats } from "./weather-format.ts";
 import { buildWeather, mapDayPartSymbol, mapSymbol } from "./weather.ts";
 
 function atOslo(hour: number): string {
@@ -52,19 +52,15 @@ const morning = new Date("2026-10-16T08:00:00.000Z");
 test("buckets waking-day hours into Morgen, Formiddag, Ettermiddag, and Kveld", () => {
   const view = buildWeather(cropDay, morning);
   assert.deepEqual(
-    view.parts.map((part) => [part.id, part.condition, part.symbol]),
+    view.parts.map((part) => [part.id, part.temperature, part.condition, part.symbol]),
     [
-      ["morgen", "Regn 1,2 mm", "cloud-rain"],
-      ["formiddag", "Yr", "cloud-drizzle"],
-      ["ettermiddag", "Sol", "sun"],
-      ["kveld", "Klart", "moon"],
+      ["morgen", 4, "Regn 1,2 mm", "cloud-rain"],
+      ["formiddag", 6, "Yr", "cloud-drizzle"],
+      ["ettermiddag", 7, "Sol", "sun"],
+      ["kveld", 5, "Klart", "moon"],
     ],
   );
-  assert.equal(weatherTileStats(view.dayLow, view.dayHigh, view.dayPrecipMm), "2–7°C · 1,6 mm");
-  assert.deepEqual(temperatureLineCaptions(view.slots), {
-    left: "3°C kl. 08:00",
-    right: "7°C kl. 16:00",
-  });
+  assert.equal(weatherTileStats(view.dayLow, view.dayHigh, view.dayPrecipMm), "2–7 °C · 1,6 mm");
   assert.equal(view.slots.length, 8);
   assert.equal(isWeatherView(view), true);
 });
@@ -95,6 +91,7 @@ test("a missing morning window keeps the card without a condition", () => {
   assert.equal(view.parts[0]?.id, "morgen");
   assert.equal(view.parts[0]?.condition, "");
   assert.equal(view.parts[0]?.symbol, null);
+  assert.equal(view.parts[0]?.temperature, null);
   assert.equal(view.parts[2]?.condition, "Sol");
 });
 
@@ -106,7 +103,7 @@ test("a dry day writes 0 mm and short sky words", () => {
     hour(20, 4, 0, "clearsky_night"),
   ];
   const view = buildWeather(dry, morning);
-  assert.equal(weatherTileStats(view.dayLow, view.dayHigh, view.dayPrecipMm), "3–7°C · 0 mm");
+  assert.equal(weatherTileStats(view.dayLow, view.dayHigh, view.dayPrecipMm), "3–7 °C · 0 mm");
   assert.equal(view.parts[0]?.condition, "Sol");
   assert.equal(view.parts[1]?.condition, "Delvis skyet");
   assert.equal(view.parts[3]?.condition, "Klart");

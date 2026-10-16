@@ -191,7 +191,7 @@ export function HomeMobile({
           data-state={!phase || phase.weather === "loading" || phase.weather === "updating" ? "loading" : phase.weather}
           className="sk-tile sk-weather"
           aria-busy={!phase || phase.weather === "loading" || phase.weather === "updating"}
-          style={{ minHeight: 220, padding: 16, gap: 10 }}
+          style={{ minHeight: 200, padding: 16, gap: 10 }}
         >
           {!phase || phase.weather === "loading" || phase.weather === "updating" ? (
             <>

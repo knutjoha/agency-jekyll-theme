@@ -69,15 +69,14 @@ function HjemWideSkeleton() {
         <div className="sk-tile sk-weather">
           <div className="sk-row sk-between">
             <Bone style={{ width: 128, height: 18 }} />
-            <Bone style={{ width: 64, height: 12 }} />
+            <Bone style={{ width: 88, height: 12 }} />
           </div>
           <div className="sk-row" style={{ gap: 10 }}>
-            <Bone style={{ flex: 1, height: 88, borderRadius: 12 }} />
-            <Bone style={{ flex: 1, height: 88, borderRadius: 12 }} />
-            <Bone style={{ flex: 1, height: 88, borderRadius: 12 }} />
-            <Bone style={{ flex: 1, height: 88, borderRadius: 12 }} />
+            <Bone style={{ flex: 1, height: 96, borderRadius: 12 }} />
+            <Bone style={{ flex: 1, height: 96, borderRadius: 12 }} />
+            <Bone style={{ flex: 1, height: 96, borderRadius: 12 }} />
+            <Bone style={{ flex: 1, height: 96, borderRadius: 12 }} />
           </div>
-          <Bone style={{ width: "100%", height: 36, borderRadius: 8 }} />
         </div>
       </div>
       <div className="sk-hjem-right">
@@ -118,18 +117,17 @@ function HjemPhoneSkeleton() {
           </div>
         </div>
       ))}
-      <div className="sk-tile sk-weather" style={{ minHeight: 220, padding: 16, gap: 10 }}>
+      <div className="sk-tile sk-weather" style={{ minHeight: 200, padding: 16, gap: 10 }}>
         <div className="sk-row sk-between">
           <Bone style={{ width: 110, height: 16 }} />
-          <Bone style={{ width: 56, height: 12 }} />
+          <Bone style={{ width: 72, height: 12 }} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-          <Bone style={{ height: 72, borderRadius: 12 }} />
-          <Bone style={{ height: 72, borderRadius: 12 }} />
-          <Bone style={{ height: 72, borderRadius: 12 }} />
-          <Bone style={{ height: 72, borderRadius: 12 }} />
+          <Bone style={{ height: 88, borderRadius: 12 }} />
+          <Bone style={{ height: 88, borderRadius: 12 }} />
+          <Bone style={{ height: 88, borderRadius: 12 }} />
+          <Bone style={{ height: 88, borderRadius: 12 }} />
         </div>
-        <Bone style={{ width: "100%", height: 28, borderRadius: 8 }} />
       </div>
       <div className="sk-tile sk-soon">
         <Bone style={{ width: 64, height: 16 }} />

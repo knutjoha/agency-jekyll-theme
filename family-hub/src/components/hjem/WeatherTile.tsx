@@ -1,11 +1,7 @@
 import type { ReactNode } from "react";
-import type { MeteogramSlot, WeatherDayPart, WeatherView } from "@/data/types";
+import type { WeatherDayPart, WeatherView } from "@/data/types";
 import { WeatherIcon } from "@/components/hjem/Meteogram";
-import {
-  dayPartRangeLabel,
-  temperatureLineCaptions,
-  weatherTileStats,
-} from "@/lib/weather-format";
+import { dayPartRangeLabel, weatherTileStats } from "@/lib/weather-format";
 
 function partIconColor(part: WeatherDayPart): string {
   if (part.symbol === "sun") return "var(--accent)";
@@ -13,81 +9,8 @@ function partIconColor(part: WeatherDayPart): string {
   return "var(--text-2)";
 }
 
-function TempPolyline({ slots }: { slots: MeteogramSlot[] }) {
-  const captions = temperatureLineCaptions(slots);
-  const temps = slots.map((slot) => slot.temperature);
-  const min = Math.min(...temps);
-  const max = Math.max(...temps);
-  const span = Math.max(2, max - min);
-  const width = 100;
-  const height = 36;
-  const padY = 5;
-  const points = slots
-    .map((slot, index) => {
-      const x = slots.length === 1 ? width / 2 : (index / (slots.length - 1)) * width;
-      const y = padY + (1 - (slot.temperature - min) / span) * (height - padY * 2);
-      return `${x},${y}`;
-    })
-    .join(" ");
-
-  return (
-    <div data-region="temp-line" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`Temperatur ${captions.left} til ${captions.right}`}
-        style={{ width: "100%", height: 44, display: "block", overflow: "visible" }}
-      >
-        <polyline
-          points={points}
-          fill="none"
-          stroke="var(--accent)"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "row",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <span
-          data-line="start"
-          style={{
-            fontFamily: "var(--font-data)",
-            fontSize: 13,
-            lineHeight: 1,
-            fontWeight: 400,
-            color: "var(--text-muted)",
-          }}
-        >
-          {captions.left}
-        </span>
-        <span
-          data-line="high"
-          style={{
-            fontFamily: "var(--font-data)",
-            fontSize: 13,
-            lineHeight: 1,
-            fontWeight: 400,
-            color: "var(--text-muted)",
-            textAlign: "right",
-          }}
-        >
-          {captions.right}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 function DayPartCard({ part, compact }: { part: WeatherDayPart; compact: boolean }) {
+  const iconSize = compact ? 26 : 30;
   return (
     <article
       data-part={part.id}
@@ -105,11 +28,36 @@ function DayPartCard({ part, compact }: { part: WeatherDayPart; compact: boolean
         textAlign: "center",
       }}
     >
-      {part.symbol ? (
-        <WeatherIcon symbol={part.symbol} size={compact ? 28 : 32} color={partIconColor(part)} />
-      ) : (
-        <div style={{ width: compact ? 28 : 32, height: compact ? 28 : 32 }} />
-      )}
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: compact ? 8 : 10,
+        }}
+      >
+        {part.symbol ? (
+          <WeatherIcon symbol={part.symbol} size={iconSize} color={partIconColor(part)} />
+        ) : (
+          <div style={{ width: iconSize, height: iconSize }} />
+        )}
+        {part.temperature != null ? (
+          <div
+            data-part-temp=""
+            style={{
+              fontFamily: "var(--font-data)",
+              fontSize: compact ? 22 : 26,
+              lineHeight: 1,
+              fontWeight: 400,
+              color: "var(--text)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {part.temperature}°
+          </div>
+        ) : null}
+      </div>
       <div
         style={{
           fontFamily: "var(--font-heading)",
@@ -168,7 +116,7 @@ export function WeatherTile({
       className="weather-tile"
       style={{
         width: "100%",
-        minHeight: compact ? 0 : 200,
+        minHeight: compact ? 0 : 180,
         height: "auto",
         flexShrink: 0,
         boxSizing: "border-box",
@@ -185,7 +133,7 @@ export function WeatherTile({
           display: "flex",
           flexDirection: "row",
           justifyContent: "space-between",
-          alignItems: "baseline",
+          alignItems: "center",
           gap: 12,
         }}
       >
@@ -193,7 +141,7 @@ export function WeatherTile({
           style={{
             display: "flex",
             flexDirection: "row",
-            alignItems: "baseline",
+            alignItems: "center",
             gap: 10,
             minWidth: 0,
             flexWrap: "wrap",
@@ -214,9 +162,14 @@ export function WeatherTile({
           <div
             data-weather-stats=""
             style={{
+              display: "flex",
+              alignItems: "center",
+              padding: compact ? "5px 10px" : "6px 12px",
+              borderRadius: "var(--r-full)",
+              background: "var(--tile-2)",
               fontFamily: "var(--font-data)",
               fontSize: compact ? 12 : 13,
-              lineHeight: 1.2,
+              lineHeight: 1,
               fontWeight: 400,
               color: "var(--text-muted)",
               whiteSpace: "nowrap",
@@ -236,7 +189,7 @@ export function WeatherTile({
             flexShrink: 0,
           }}
         >
-          Stabekk
+          Stabekk · data fra Yr
         </div>
       </div>
       {note}
@@ -245,7 +198,6 @@ export function WeatherTile({
           <DayPartCard key={part.id} part={part} compact={compact} />
         ))}
       </div>
-      <TempPolyline slots={weather.slots} />
     </section>
   );
 }
