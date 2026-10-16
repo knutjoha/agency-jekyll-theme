@@ -2,6 +2,7 @@ import type { CSSProperties, ReactNode } from "react";
 import type { AppPath } from "@/components/shell/navPaths";
 
 const PEOPLE = ["--p-amelia", "--p-hedda", "--p-maja", "--p-knut", "--p-ulla"] as const;
+const DAUGHTERS = ["--p-amelia", "--p-hedda", "--p-maja"] as const;
 
 function Bone({ className = "", style }: { className?: string; style?: CSSProperties }) {
   return <div className={`sk-bone ${className}`.trim()} style={style} />;
@@ -322,11 +323,70 @@ function MiddagPhoneSkeleton() {
   );
 }
 
+function VerdiWideSkeleton() {
+  return (
+    <div className="sk-todo-wide">
+      <div className="sk-row sk-between">
+        <div className="sk-row" style={{ gap: 14 }}>
+          <Bone style={{ width: 88, height: 22 }} />
+          <Bone style={{ width: 160, height: 14 }} />
+        </div>
+        <Bone style={{ width: 112, height: 36, borderRadius: "var(--r-full)" }} />
+      </div>
+      <div className="sk-todo-lanes">
+        {DAUGHTERS.map((token) => (
+          <div key={token} className="sk-tile sk-todo-lane">
+            <div className="sk-person-row">
+              <Avatar token={token} size={30} />
+              <div className="sk-stack" style={{ flex: 1 }}>
+                <Bone style={{ width: "70%", height: 14 }} />
+              </div>
+              <Bone style={{ width: 48, height: 14 }} />
+            </div>
+            {[0, 1, 2, 3].map((key) => (
+              <Bone key={key} style={{ width: "100%", height: 40, borderRadius: 12 }} />
+            ))}
+            <Bone style={{ width: "100%", height: 46, borderRadius: 12 }} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VerdiPhoneSkeleton() {
+  return (
+    <div className="sk-phone">
+      <PhoneHeaderBones />
+      <div className="sk-row sk-between">
+        <Bone style={{ width: 140, height: 20 }} />
+        <Bone style={{ width: 112, height: 32, borderRadius: "var(--r-full)" }} />
+      </div>
+      <div className="sk-row" style={{ gap: 8 }}>
+        {DAUGHTERS.map((token) => (
+          <div key={token} className="sk-stack" style={{ flex: 1, alignItems: "center", gap: 6 }}>
+            <Avatar token={token} size={42} />
+            <Bone style={{ width: 44, height: 10 }} />
+          </div>
+        ))}
+      </div>
+      <div className="sk-row sk-between">
+        <Bone style={{ width: 88, height: 18 }} />
+        <Bone style={{ width: 52, height: 14 }} />
+      </div>
+      {[0, 1, 2, 3].map((key) => (
+        <Bone key={key} style={{ width: "100%", height: 44, borderRadius: 12 }} />
+      ))}
+    </div>
+  );
+}
+
 const WIDE: Record<AppPath, () => ReactNode> = {
   "/": HjemWideSkeleton,
   "/kalender": KalenderWideSkeleton,
   "/todo": TodoWideSkeleton,
   "/middag": MiddagWideSkeleton,
+  "/verdi": VerdiWideSkeleton,
 };
 
 const PHONE: Record<AppPath, () => ReactNode> = {
@@ -334,6 +394,7 @@ const PHONE: Record<AppPath, () => ReactNode> = {
   "/kalender": KalenderPhoneSkeleton,
   "/todo": TodoPhoneSkeleton,
   "/middag": MiddagPhoneSkeleton,
+  "/verdi": VerdiPhoneSkeleton,
 };
 
 export function RouteSkeleton({ route }: { route: AppPath }) {

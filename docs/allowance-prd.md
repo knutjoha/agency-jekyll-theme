@@ -4,9 +4,9 @@ Repo: `knutjoha/agency-jekyll-theme`, branch `gh-pages`, app in `family-hub/` (N
 
 **Status:** Build-ready for v1.1. Do not implement from the 15.10.2026 sketch; this document replaces it.  
 **Date:** 16.10.2026  
-**Decisions:** Knut, 16.10.2026  
+**Decisions:** Knut, 16.10.2026 (BASE_NOK filled the same day)  
 **Household:** [family-hub-prd.md](family-hub-prd.md) §5.8  
-**Open product field:** `BASE_NOK` (same weekly kroner for Amelia, Maja and Hedda). Do not invent a number. Do not ship until it is filled.
+**BASE_NOK:** 50 (same weekly kroner for Amelia, Hedda and Maja).
 
 The product UI is Norwegian. This document is in English.
 
@@ -19,8 +19,10 @@ Verdi is a fifth nav item. It is the un-parked chores slice: three daughters, on
 Each daughter has the same obligatory basics, a skip counter, extras with kroner amounts, and a running total:
 
 ```
-shown = BASE_NOK + extras − 10 * skips
+shown = 50 + extras − 10 * skips
 ```
+
+`BASE_NOK` is the named constant **50**. Each skip plus deducts 10 NOK.
 
 There are no ticks, no daily check-in, no Sunday cron, and no payout in this app. One **Fullfør uke** button locks the week. Money leaves the house in another app.
 
@@ -83,7 +85,7 @@ Lane order on screen follows the existing daughter order in Todo (after the pare
 
 ## 5. Rules
 
-1. **Same base.** `BASE_NOK` is one household number, used for all three. Open field. Implementation: a single named constant or setting `BASE_NOK`. Do not hard-code a guessed kroner amount.
+1. **Same base.** `BASE_NOK` is **50**, one household number, used for all three. Implementation: a single named constant `BASE_NOK = 50`.
 2. **Basics, same list.** Seeded for all three, household-shared (edit title → all three lanes):
    - Ryddig i gangen
    - Ta ut av gymbagen
@@ -97,7 +99,7 @@ Lane order on screen follows the existing daughter order in Todo (after the pare
 8. **Who may edit.** No restrictions. Anyone at the shared iPad may press ±, add/delete extras, edit an extra, edit a basic title, and press **Fullfør uke**. No PIN.
 9. **New week.** When Oslo today is in a new Monday-week, `/verdi` shows a new unlocked record: `skips = 0`, extras empty, same four basics. No job copies last week’s extras. No Sunday script.
 10. **Lock.** **Fullfør uke** sets `locked = true` on that week id. After lock: ±, extras, basics, and the button are inert. Totals stay visible. Payout is manual elsewhere.
-11. **Formula.** `shown = BASE_NOK + extras − 10 * skips`. `shown` may be below `BASE_NOK`. Do not floor `shown` at 0.
+11. **Formula.** `shown = 50 + extras − 10 * skips`. `shown` may be below 50. Do not floor `shown` at 0.
 
 ---
 
@@ -111,7 +113,7 @@ One week record, keyed like Middag, not like the calendar.
 
 | Field | Meaning |
 |---|---|
-| `BASE_NOK` | Weekly kroner, same for all three. **TBD. Only remaining product hole.** |
+| `BASE_NOK` | Weekly kroner, same for all three. **50.** |
 | basics[4] | `{ id, title }` seeded as the four Norwegian strings above. Shared. Title editable. Membership of the four is fixed. |
 
 **Per week**
@@ -129,9 +131,9 @@ One week record, keyed like Middag, not like the calendar.
 | `skips` | integer ≥ 0. Default 0. |
 | extras[] | `{ id, title, amount_nok }` with `amount_nok` a positive integer. No cap. |
 
-Derived, do not persist as source of truth: `extras_sum`, `deduction = 10 * skips`, `shown = BASE_NOK + extras_sum − deduction`.
+Derived, do not persist as source of truth: `extras_sum`, `deduction = 10 * skips`, `shown = 50 + extras_sum − deduction`.
 
-Persist in Supabase the same way as todos/dinner (service role, no user login). Fixture snapshot may seed an unlocked current week with `skips = 0` and empty extras; do not invent `BASE_NOK` in the fixture either — keep using the named field.
+Persist in Supabase the same way as todos/dinner (service role, no user login). Fixture snapshot may seed an unlocked current week with `skips = 0` and empty extras. Always derive totals from `BASE_NOK` (50), never store a guessed amount.
 
 ---
 
@@ -283,4 +285,4 @@ Reuse Todo **Lagre** / **Slett**. Do not add **Avbryt**. Amounts already in cont
 - Route `/verdi`. Add `{ href: "/verdi", label: "Verdi", icon: Banknote }` (or the closest Lucide money icon) to `navItems`. Add `"/verdi"` to `APP_PATHS`. Skeleton `loading.tsx` like Todo/Middag.
 - Phone vs wide: `TodoScreen` / `HallwayPage` split, not a new breakpoint.
 - Week key: `mondayFor(null, now)` / `mondayOf(osloDateKey(now))`, same as dinner `week_id`.
-- `BASE_NOK` is the only product hole. Keep it named. Fill it before ship.
+- Named constant `BASE_NOK = 50`. Skip step `SKIP_NOK = 10`.

@@ -1,4 +1,5 @@
 import {
+  Banknote,
   CalendarDays,
   CookingPot,
   House,
@@ -11,6 +12,7 @@ export const navItems: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/kalender", label: "Kalender", icon: CalendarDays },
   { href: "/todo", label: "Todo", icon: ListTodo },
   { href: "/middag", label: "Middag", icon: CookingPot },
+  { href: "/verdi", label: "Verdi", icon: Banknote },
 ];
 
 export function isNavActive(pathname: string, href: string): boolean {

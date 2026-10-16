@@ -231,7 +231,7 @@ These were in the first draft and are parked until the five features are in dail
 
 ### 5.8 v1.1 — Verdi (un-parked 16.10.2026)
 
-Chore assignment and rewards were parked in §4.4 and §5.7. They are now v1.1: a fifth nav item, route `/verdi`, label **Verdi**. Spec: [allowance-prd.md](allowance-prd.md). The three daughters are Amelia, Maja and Hedda. Ulla Marie is the mother, not a daughter. This does not change the Oct 3 v1 five, calendar write rules, or the dinner schema.
+Chore assignment and rewards were parked in §4.4 and §5.7. They are now v1.1: a fifth nav item, route `/verdi`, label **Verdi**. Spec: [allowance-prd.md](allowance-prd.md). The three daughters are Amelia, Maja and Hedda. Ulla Marie is the mother, not a daughter. Weekly base is `BASE_NOK` **50**, same for all three; `shown = 50 + extras − 10 * skips`. This does not change the Oct 3 v1 five, calendar write rules, or the dinner schema.
 
 ## 6. Context of use
 

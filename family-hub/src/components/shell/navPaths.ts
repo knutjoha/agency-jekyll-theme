@@ -1,4 +1,4 @@
-export const APP_PATHS = ["/", "/kalender", "/todo", "/middag"] as const;
+export const APP_PATHS = ["/", "/kalender", "/todo", "/middag", "/verdi"] as const;
 
 export type AppPath = (typeof APP_PATHS)[number];
 
