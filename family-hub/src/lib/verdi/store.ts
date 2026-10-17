@@ -1,12 +1,11 @@
 import "server-only";
-import { fixtureVerdi } from "@/data/verdi";
-import { mondayOf } from "@/lib/calendar-view";
-import { osloDateKey } from "@/lib/oslo";
 import { getSupabase } from "@/lib/supabase/admin";
 import {
   DEFAULT_BASICS,
   POOL_ID,
   VERDI_DAUGHTERS,
+  emptyWeekFor,
+  mondayFor,
   parseBasicWrite,
   parseExtraCreate,
   parseExtraDelete,
@@ -45,12 +44,12 @@ function logFailure(area: string, error: { code?: string; message?: string }) {
   console.error(`[family-hub] ${area} failed: ${safeError(error)}`);
 }
 
-function fixtureLoad(now?: Date): VerdiLoad {
-  return { source: "fixture", persisted: false, week: fixtureVerdi(now) };
+function fixtureLoad(now?: Date, week?: string | null): VerdiLoad {
+  return { source: "fixture", persisted: false, week: emptyWeekFor(mondayFor(week, now)) };
 }
 
 export function currentMonday(now = new Date()): string {
-  return mondayOf(osloDateKey(now));
+  return mondayFor(null, now);
 }
 
 function basicsFromRows(rows: BasicRow[] | null): VerdiBasic[] {
@@ -95,12 +94,12 @@ function weekFromRows(
   });
 }
 
-export async function loadVerdi(options?: { snapshot?: boolean; now?: Date }): Promise<VerdiLoad> {
+export async function loadVerdi(options?: { snapshot?: boolean; now?: Date; week?: string | null }): Promise<VerdiLoad> {
   const now = options?.now ?? new Date();
   if (options?.snapshot) return fixtureLoad(now);
+  const monday = mondayFor(options?.week, now);
   const supabase = getSupabase();
-  if (!supabase) return fixtureLoad(now);
-  const monday = currentMonday(now);
+  if (!supabase) return fixtureLoad(now, monday);
 
   const [weekResult, skipResult, extraResult, basicResult] = await Promise.all([
     supabase.from("verdi_week").select("id, locked, locked_at").eq("id", monday).maybeSingle(),
@@ -114,17 +113,18 @@ export async function loadVerdi(options?: { snapshot?: boolean; now?: Date }): P
     if (skipResult.error) logFailure("verdi skips read", skipResult.error);
     if (extraResult.error) logFailure("verdi extras read", extraResult.error);
     if (basicResult.error) logFailure("verdi basics read", basicResult.error);
-    return fixtureLoad(now);
+    return fixtureLoad(now, monday);
   }
 
+  const basics = basicsFromRows((basicResult.data as BasicRow[]) ?? []);
   const week = weekFromRows(
     monday,
     (weekResult.data as WeekRow | null) ?? null,
     (skipResult.data as SkipRow[]) ?? [],
     (extraResult.data as ExtraRow[]) ?? [],
-    basicsFromRows((basicResult.data as BasicRow[]) ?? []),
+    basics,
   );
-  if (!week) return fixtureLoad(now);
+  if (!week) return { source: "supabase", persisted: true, week: emptyWeekFor(monday, basics) };
   return { source: "supabase", persisted: true, week };
 }
 

@@ -17,8 +17,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export async function GET() {
-  const loaded = await loadVerdi();
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const loaded = await loadVerdi({
+    snapshot: url.searchParams.get("snapshot") === "1",
+    week: url.searchParams.get("week"),
+  });
   return NextResponse.json(loaded, { headers });
 }
 

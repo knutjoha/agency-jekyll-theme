@@ -330,6 +330,8 @@ function VerdiWideSkeleton() {
         <div className="sk-row" style={{ gap: 14 }}>
           <Bone style={{ width: 88, height: 22 }} />
           <Bone style={{ width: 160, height: 14 }} />
+          <Bone style={{ width: 32, height: 32, borderRadius: "var(--r-full)" }} />
+          <Bone style={{ width: 32, height: 32, borderRadius: "var(--r-full)" }} />
         </div>
         <Bone style={{ width: 112, height: 36, borderRadius: "var(--r-full)" }} />
       </div>
@@ -371,6 +373,13 @@ function VerdiPhoneSkeleton() {
       <div className="sk-row sk-between">
         <Bone style={{ width: 140, height: 20 }} />
         <Bone style={{ width: 112, height: 32, borderRadius: "var(--r-full)" }} />
+      </div>
+      <div className="sk-row sk-between">
+        <Bone style={{ width: 120, height: 12 }} />
+        <div className="sk-row" style={{ gap: 8 }}>
+          <Bone style={{ width: 32, height: 32, borderRadius: "var(--r-full)" }} />
+          <Bone style={{ width: 32, height: 32, borderRadius: "var(--r-full)" }} />
+        </div>
       </div>
       <div className="sk-row" style={{ gap: 8 }}>
         {DAUGHTERS.map((token) => (

@@ -8,13 +8,14 @@ export const dynamic = "force-dynamic";
 export default async function VerdiPage({
   searchParams,
 }: {
-  searchParams: Promise<{ snapshot?: string | string[] }>;
+  searchParams: Promise<{ snapshot?: string | string[]; week?: string | string[] }>;
 }) {
   const params = await searchParams;
   const snapshot = params.snapshot === "1";
+  const week = typeof params.week === "string" ? params.week : null;
   const [hallway, verdi] = await Promise.all([
     loadHallway(Promise.resolve(params)),
-    loadVerdi({ snapshot, now: snapshot ? SNAPSHOT_AT : undefined }),
+    loadVerdi({ snapshot, week, now: snapshot ? SNAPSHOT_AT : undefined }),
   ]);
   return <VerdiScreen {...hallway} week={verdi.week} persisted={verdi.persisted} />;
 }
