@@ -99,7 +99,7 @@ function LineRow({ line, now, compact }: { line: LineDepartures; now: Date; comp
         flexDirection: "row",
         alignItems: "center",
         gap: compact ? 8 : 12,
-        minWidth: compact ? 0 : undefined,
+        minWidth: 0,
       }}
     >
       <div
@@ -156,11 +156,11 @@ function LineRow({ line, now, compact }: { line: LineDepartures; now: Date; comp
       <div
         className={compact ? undefined : "departures-times"}
         style={{
-          display: "flex",
-          flexDirection: "row",
-          alignItems: "flex-start",
+          display: compact ? "flex" : undefined,
+          flexDirection: compact ? "row" : undefined,
+          alignItems: compact ? "flex-start" : undefined,
           justifyContent: compact ? "space-between" : undefined,
-          gap: compact ? 6 : 8,
+          gap: compact ? 6 : undefined,
           flexShrink: compact ? 0 : undefined,
           width: compact ? "100%" : undefined,
         }}
@@ -177,7 +177,7 @@ function LineRow({ line, now, compact }: { line: LineDepartures; now: Date; comp
       data-line={line.line}
       data-destination={line.destination}
       style={{
-        display: "flex",
+        display: compact ? "flex" : undefined,
         flexDirection: compact ? "column" : undefined,
         alignItems: compact ? "stretch" : undefined,
         gap: compact ? 8 : undefined,
