@@ -303,13 +303,12 @@ export async function saveDinnerDay(input: unknown): Promise<DinnerDayResult> {
     return { persisted: false };
   }
 
-  const [dinner, shopping] = await Promise.all([loadDinner({ week }), loadShopping({ week })]);
-  if (!dinner.persisted || !shopping.persisted) return { persisted: true, week };
+  const dinner = await loadDinner({ week });
+  if (!dinner.persisted) return { persisted: true, week };
   return {
     persisted: true,
     week: dinner.week,
     days: dinner.days,
-    aisles: shopping.aisles,
   };
 }
 

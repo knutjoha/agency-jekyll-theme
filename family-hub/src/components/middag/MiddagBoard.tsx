@@ -381,11 +381,8 @@ export function MiddagBoard({
             {itemCount} varer
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 7, color: "var(--text-muted)" }}>
-          <RefreshCw size={13} color="var(--text-muted)" />
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, lineHeight: "normal", fontWeight: 400, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-            Oppdateres fra ukemenyen
-          </span>
+        <div style={{ fontFamily: "var(--font-body)", fontSize: 13, lineHeight: "normal", fontWeight: 400, color: "var(--text-muted)" }}>
+          Legg til varer selv
         </div>
         <div style={{ flex: 1, minHeight: 0, width: "100%", display: "flex", flexDirection: "column", gap: 8, overflow: "auto" }}>
           {aisles.flatMap((aisle) => aisle.items).map((item) => (

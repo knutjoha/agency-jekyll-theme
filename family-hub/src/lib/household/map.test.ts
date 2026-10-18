@@ -13,10 +13,8 @@ import {
   parseTodoCreate,
   parseTodoDelete,
   parseTodoPatch,
-  refreshMenuItems,
   type DinnerDayRow,
   type LaneTemplate,
-  type ShoppingLine,
   type TodoRow,
 } from "./map.ts";
 
@@ -230,56 +228,21 @@ test("ingredient name and amount limits match the shopping limits", () => {
   assert.equal(parseShoppingCreate({ id: "melk", aisleId: "meieri", name: name200, quantity: amount41, week: "2026-10-05" }).ok, false);
 });
 
-test("shopping refresh collapses menu lines and keeps manual rows", () => {
-  const manual: ShoppingLine = {
-    id: "paprika",
-    aisleId: "gront",
-    name: "Paprika",
-    quantity: "2 stk",
-    done: false,
-    origin: "manual",
-    sortOrder: 0,
-  };
-  const next = refreshMenuItems(
-    [
-      { dayOrder: 0, sortOrder: 0, name: "Kjøttdeig", amount: "400 g" },
-      { dayOrder: 2, sortOrder: 0, name: "kjøttdeig", amount: "400 g" },
-      { dayOrder: 0, sortOrder: 1, name: "Melk", amount: "1 l" },
-      { dayOrder: 1, sortOrder: 0, name: "Melk", amount: "2 l" },
+test("a dinner save does not produce shopping lines", () => {
+  const saved = parseDinnerDaySave({
+    week: "2026-10-12",
+    dayId: "fre",
+    meal: { id: "taco", title: "Taco", minutes: 30 },
+    ingredients: [
+      { id: "kjottdeig", name: "Kjøttdeig", amount: "400 g" },
+      { id: "lefse", name: "Lefser", amount: "8 stk" },
     ],
-    [
-      {
-        id: "menu-melk",
-        aisleId: "ukemeny",
-        name: "Melk",
-        quantity: "1 l",
-        done: true,
-        origin: "menu",
-        sortOrder: 0,
-      },
-      {
-        id: "menu-old",
-        aisleId: "ukemeny",
-        name: "Nudler",
-        quantity: "1 pk",
-        done: false,
-        origin: "menu",
-        sortOrder: 1,
-      },
-      manual,
-    ],
-  );
-  const menu = next.filter((item) => item.origin === "menu");
-  assert.equal(menu.length, 3);
-  assert.equal(menu.filter((item) => item.quantity === "400 g").length, 1);
-  assert.equal(menu.find((item) => item.quantity === "400 g")?.name, "Kjøttdeig");
-  assert.equal(menu.find((item) => item.quantity === "1 l")?.done, true);
-  assert.equal(menu.find((item) => item.quantity === "2 l")?.done, false);
-  assert.equal(next.some((item) => item.id === "menu-old"), false);
-  assert.deepEqual(
-    next.find((item) => item.id === "paprika"),
-    manual,
-  );
+  });
+  assert.equal(saved.ok, true);
+  if (!saved.ok) return;
+  assert.equal("aisles" in saved.value, false);
+  assert.equal(Object.keys(saved.value).sort().join(" "), "dayId ingredients meal week");
+  assert.equal(saved.value.ingredients.length, 2);
 });
 
 test("a new Monday builds the dinner period from that Monday", () => {

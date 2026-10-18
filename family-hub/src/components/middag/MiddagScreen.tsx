@@ -316,7 +316,6 @@ export function MiddagScreen({
       setDays(next);
       savedDays.current = cloneDays(next);
     }
-    if (saved.week === at && isAisles(saved.aisles)) setAisles(cloneAisles(saved.aisles));
     setEditor(null);
   }
 
@@ -342,7 +341,6 @@ export function MiddagScreen({
         setDays(nextDays);
         savedDays.current = nextDays;
       }
-      if (isAisles(saved.aisles)) setAisles(cloneAisles(saved.aisles));
       setEditor(null);
     } finally {
       planLock.current = false;

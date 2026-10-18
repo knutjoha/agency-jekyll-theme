@@ -150,6 +150,7 @@ test("the prompt carries the target week and asks for dinners only", () => {
   assert.match(prompt, /Lapskaus, 40 min/);
   assert.match(prompt, /tomme/);
   assert.match(prompt, /bare middager/);
+  assert.match(prompt, /en egen handleliste er utenfor/);
   assert.doesNotMatch(prompt, /diets/);
 });
 

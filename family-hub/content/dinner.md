@@ -41,5 +41,4 @@ Du lager ukemenyer med middag for familien til Knut Johannessen Vidvei. Skriv p�
 - Ingen deltakere og ingen varsler.
 
 ## Handleliste
-- Lag en samlet handleliste for hele uken, med mengder til 5 personer.
-- Grupper etter kjøtt og fisk, meieri og egg, grønt, og tørrvarer og saus.
+- Handlelisten i appen er manuell. Ikke lag en handleliste, og ikke fyll den fra middagene.

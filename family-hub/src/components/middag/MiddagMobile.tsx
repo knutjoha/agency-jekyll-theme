@@ -368,7 +368,7 @@ export function MiddagMobile({
             <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
               <span style={{ fontFamily: "var(--font-heading)", fontSize: 16, lineHeight: 1.1, fontWeight: 400, color: "var(--text)" }}>Handleliste</span>
               <span style={{ fontFamily: "var(--font-body)", fontSize: 12, lineHeight: 1.2, fontWeight: 400, color: "var(--text-muted)" }}>
-                {items.length} varer · {bought} kjøpt · fra ukemenyen
+                {items.length} varer · {bought} kjøpt
               </span>
             </span>
             <ChevronRight size={17} color="var(--text-muted)" />

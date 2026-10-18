@@ -176,64 +176,18 @@ begin
 end;
 $$;
 
+-- Handleliste is manual. Dinner saves must not write shopping_items.
 create or replace function public.refresh_menu_shopping(week text)
 returns void
 language plpgsql
 security invoker
 set search_path = public
 as $$
-declare
-  done_pairs jsonb;
 begin
-  insert into public.shopping_aisles (id, label, sort_order)
-  values ('ukemeny', 'Fra ukemenyen', 4)
-  on conflict (id) do nothing;
-
-  select coalesce(
-    jsonb_agg(distinct jsonb_build_object('norm', lower(btrim(name)), 'amount', quantity)),
-    '[]'::jsonb
-  )
-  into done_pairs
-  from public.shopping_items
-  where week_id = week
-    and origin = 'menu'
-    and done;
-
-  delete from public.shopping_items
-  where week_id = week
-    and origin = 'menu';
-
-  insert into public.shopping_items (id, aisle_id, week_id, origin, name, quantity, done, sort_order)
-  select
-    'menu-' || replace(week, '-', '') || '-' || lpad(line.ord::text, 3, '0'),
-    'ukemeny',
-    week,
-    'menu',
-    line.name,
-    line.amount,
-    done_pairs @> jsonb_build_array(jsonb_build_object('norm', line.norm_name, 'amount', line.amount)),
-    line.ord - 1
-  from (
-    select
-      picked.name,
-      picked.amount,
-      picked.norm_name,
-      row_number() over (order by picked.day_order, picked.sort_order) as ord
-    from (
-      select distinct on (lower(btrim(ing.name)), ing.amount)
-        ing.name,
-        ing.amount,
-        lower(btrim(ing.name)) as norm_name,
-        day.sort_order as day_order,
-        ing.sort_order
-      from public.dinner_ingredients ing
-      join public.dinner_days day
-        on day.week_id = ing.week_id
-       and day.meal_id = ing.meal_id
-      where ing.week_id = week
-      order by lower(btrim(ing.name)), ing.amount, day.sort_order, ing.sort_order
-    ) as picked
-  ) as line;
+  if week is null then
+    return;
+  end if;
+  return;
 end;
 $$;
 
@@ -250,8 +204,6 @@ declare
   meal_minutes integer;
   seen_meals text[] := '{}';
   seen_days text[] := '{}';
-  old_meals text[];
-  new_meals text[];
 begin
   if jsonb_typeof(days) <> 'array' or jsonb_array_length(days) <> 7 then
     raise exception 'days must be seven';
@@ -297,12 +249,6 @@ begin
 
   perform public.ensure_dinner_week(week);
 
-  select coalesce(array_agg(day.meal_id), '{}')
-  into old_meals
-  from public.dinner_days as day
-  where day.week_id = week
-    and day.meal_id is not null;
-
   update public.dinner_days
   set meal_id = null, meal_title = null, meal_minutes = null, updated_at = now()
   where week_id = week;
@@ -330,20 +276,6 @@ begin
       where day.week_id = week
         and day.meal_id = ing.meal_id
     );
-
-  select coalesce(array_agg(day.meal_id), '{}')
-  into new_meals
-  from public.dinner_days as day
-  where day.week_id = week
-    and day.meal_id is not null;
-
-  if exists (
-    select 1
-    from unnest(old_meals) as old_id
-    where old_id <> all (new_meals)
-  ) then
-    perform public.refresh_menu_shopping(week);
-  end if;
 end;
 $$;
 
@@ -454,8 +386,6 @@ begin
     where week_id = week
       and meal_id = old_meal;
   end if;
-
-  perform public.refresh_menu_shopping(week);
 end;
 $$;
 
