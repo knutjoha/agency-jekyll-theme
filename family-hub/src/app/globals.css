@@ -510,8 +510,10 @@ body {
   }
 }
 
-/* Desktop Avganger: keep line numbers visible when the right-column card is
-   squeezed (about 975–1175px). Phone uses the compact stacked layout. */
+/* Desktop Avganger: identity and times share one grid so a long destination
+   (Nationaltheatret) cannot resize or shove the time chips. Line numbers stay
+   visible when the right-column card is squeezed (about 975–1175px). Phone
+   uses the compact stacked layout. */
 .departures-tile {
   container-type: inline-size;
   container-name: avganger;
@@ -519,20 +521,19 @@ body {
 }
 
 .departures-line {
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: minmax(3rem, 1fr) 268px;
   align-items: center;
-  gap: 12px;
+  column-gap: 12px;
   min-width: 0;
 }
 
 .departures-id {
   display: flex;
-  flex: 1 1 auto;
   align-items: center;
   gap: 12px;
-  min-width: 3rem;
-  overflow: visible;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .departures-line-badge {
@@ -542,24 +543,26 @@ body {
 }
 
 .departures-times {
-  display: flex;
-  flex: 0 1 auto;
-  flex-direction: row;
-  align-items: flex-start;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(3, 84px);
+  align-items: start;
+  justify-content: start;
   gap: 8px;
-  min-width: 0;
+  width: 268px;
 }
 
 .departures-chip {
-  flex: 0 1 84px;
   width: 84px;
-  min-width: 0;
+  min-width: 84px;
+  max-width: 84px;
+  height: 62px;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 @container avganger (max-width: 24rem) {
   .departures-line {
+    display: flex;
     flex-direction: column;
     align-items: stretch;
     gap: 8px;
@@ -567,9 +570,11 @@ body {
 
   .departures-id {
     flex: 0 1 auto;
+    overflow: hidden;
   }
 
   .departures-times {
+    display: flex;
     flex: 1 1 auto;
     width: 100%;
     justify-content: space-between;
@@ -578,5 +583,8 @@ body {
   .departures-chip {
     flex: 1 1 0;
     width: auto;
+    min-width: 0;
+    max-width: none;
+    height: 62px;
   }
 }
