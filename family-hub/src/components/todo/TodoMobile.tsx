@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { Calendar, Plus, Trash2, TriangleAlert, Undo2 } from "lucide-react";
+import { ClearDoneButton } from "@/components/todo/ClearDoneButton";
 import { CheckBox, TodoEditor } from "@/components/todo/TodoEditor";
 import { draftKey, useCancelOnOutsidePress, useTodoActions } from "@/components/todo/use-todo-actions";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
@@ -60,6 +61,9 @@ export function TodoMobile({
   const draft = drafts[selected.personId];
   const drafting = draft !== undefined;
   const editingTask = selected.tasks.find((task) => task.editing);
+  const allTasks = lanes.flatMap((lane) => lane.tasks);
+  const doneCount = allTasks.filter((task) => task.done).length;
+  const openAll = allTasks.filter((task) => !task.done).length;
   useCancelOnOutsidePress(Boolean(editingTask || drafting), () => {
     if (editingTask) actions.cancelEdit(editingTask.id);
     if (drafting) actions.cancelDraft(selected.personId);
@@ -77,6 +81,32 @@ export function TodoMobile({
       }}
     >
       <PhoneHeader clock={clock} weather={weather} />
+
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          padding: "2px 0 0",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 13,
+            lineHeight: 1,
+            fontWeight: 400,
+            color: "var(--text-muted)",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+          }}
+        >
+          {openAll} åpne · {doneCount} fullført
+        </div>
+        <ClearDoneButton disabled={doneCount === 0} onClick={actions.clearDone} />
+      </div>
 
       <div style={{ display: "flex", flexDirection: "row", gap: 8 }}>
         {lanes.map((lane) => {

@@ -2,6 +2,7 @@
 
 import { Calendar, Plus, Trash2, TriangleAlert, Undo2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ClearDoneButton } from "@/components/todo/ClearDoneButton";
 import { CheckBox, TodoEditor } from "@/components/todo/TodoEditor";
 import { draftKey, useCancelOnOutsidePress, useTodoActions } from "@/components/todo/use-todo-actions";
 import { people } from "@/data/fixture";
@@ -133,6 +134,7 @@ export function TodoBoard({ lanes: initialLanes, persisted, snapshot = false }: 
               </button>
             );
           })}
+          <ClearDoneButton disabled={doneCount === 0} onClick={actions.clearDone} />
         </div>
       </div>
       <div

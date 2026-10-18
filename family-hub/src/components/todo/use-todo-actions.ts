@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PersonId, TodoLane, TodoTask } from "@/data/types";
+import { collectDone, withoutDone } from "@/components/todo/clear-done";
 import { dueFields } from "@/lib/frist";
 import { osloDateKey } from "@/lib/oslo";
 import { writeJson } from "@/lib/persist-client";
@@ -236,6 +237,39 @@ export function useTodoActions(initialLanes: TodoLane[], persisted: boolean) {
     });
   }
 
+  function clearDone() {
+    const done = collectDone(lanes);
+    if (!done.length) return;
+    const token = ++op.current;
+    setPickerId(null);
+    setRevealedId(null);
+    setRemoved(null);
+    setLanes((current) => withoutDone(current));
+    if (!persisted) return;
+    void Promise.all(
+      done.map((item) => {
+        const pending = inflight.current.get(item.task.id);
+        if (pending) return pending;
+        const request = writeJson("/api/todos", "DELETE", { id: item.task.id });
+        inflight.current.set(item.task.id, request);
+        return request;
+      }),
+    ).then((results) => {
+      done.forEach((item) => {
+        if (inflight.current.get(item.task.id)) inflight.current.delete(item.task.id);
+      });
+      if (op.current !== token) return;
+      results.forEach((ok, index) => {
+        if (ok) {
+          originals.current.delete(done[index].task.id);
+          return;
+        }
+        const item = done[index];
+        setLanes((current) => inserted(current, item.personId, item.index, item.task));
+      });
+    });
+  }
+
   function undo() {
     const snapshot = removed;
     if (!snapshot) return;
@@ -348,6 +382,7 @@ export function useTodoActions(initialLanes: TodoLane[], persisted: boolean) {
     setTitle,
     setDue,
     deleteTask,
+    clearDone,
     undo,
     openDraft,
     cancelDraft,
