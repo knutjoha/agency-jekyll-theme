@@ -85,23 +85,6 @@ export type DinnerDaySave = {
   ingredients: IngredientWrite[];
 };
 
-export type MenuLineInput = {
-  dayOrder: number;
-  sortOrder: number;
-  name: string;
-  amount: string;
-};
-
-export type ShoppingLine = {
-  id: string;
-  aisleId: string;
-  name: string;
-  quantity: string;
-  done: boolean;
-  origin: "manual" | "menu";
-  sortOrder: number;
-};
-
 export type TodoCreate = {
   id: string;
   personId: PersonId;
@@ -266,47 +249,6 @@ function ingredientsForMeal(mealId: string, ingredients: IngredientRow[]): Ingre
     .slice()
     .sort((left, right) => left.sort_order - right.sort_order || left.id.localeCompare(right.id))
     .map((row) => ({ id: row.id, name: row.name, amount: row.amount }));
-}
-
-export function normalizeMenuName(name: string): string {
-  return name.trim().toLocaleLowerCase("nb-NO");
-}
-
-// Same rules as refresh_menu_shopping in supabase/dinner-weeks.sql.
-export function refreshMenuItems(ingredients: MenuLineInput[], items: ShoppingLine[]): ShoppingLine[] {
-  const ordered = ingredients
-    .slice()
-    .sort((left, right) => left.dayOrder - right.dayOrder || left.sortOrder - right.sortOrder);
-  const seen = new Set<string>();
-  const lines: { name: string; amount: string; norm: string }[] = [];
-  for (const ingredient of ordered) {
-    const name = ingredient.name.trim();
-    const amount = ingredient.amount.trim();
-    if (!name || !amount) continue;
-    const norm = name.toLocaleLowerCase("nb-NO");
-    const key = `${norm}\u0000${amount}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    lines.push({ name, amount, norm });
-  }
-
-  const manual = items.filter((item) => item.origin === "manual");
-  const previous = items.filter((item) => item.origin === "menu");
-  const menu = lines.map((line, index) => {
-    const match = previous.find(
-      (item) => normalizeMenuName(item.name) === line.norm && item.quantity.trim() === line.amount,
-    );
-    return {
-      id: match?.id ?? `menu-${index + 1}`,
-      aisleId: "ukemeny",
-      name: line.name,
-      quantity: line.amount,
-      done: match?.done === true,
-      origin: "menu" as const,
-      sortOrder: index,
-    };
-  });
-  return [...manual, ...menu];
 }
 
 export function parseStartsOn(value: string): { year: number; month: number; day: number } | null {
