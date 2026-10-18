@@ -218,6 +218,7 @@ function TodoWideSkeleton() {
           <Bone style={{ width: 64, height: 32, borderRadius: "var(--r-full)" }} />
           <Bone style={{ width: 88, height: 32, borderRadius: "var(--r-full)" }} />
           <Bone style={{ width: 92, height: 32, borderRadius: "var(--r-full)" }} />
+          <Bone style={{ width: 124, height: 32, borderRadius: "var(--r-full)" }} />
         </div>
       </div>
       <div className="sk-todo-lanes">
@@ -244,6 +245,10 @@ function TodoPhoneSkeleton() {
   return (
     <div className="sk-phone">
       <PhoneHeaderBones />
+      <div className="sk-row sk-between">
+        <Bone style={{ width: 132, height: 12 }} />
+        <Bone style={{ width: 124, height: 32, borderRadius: "var(--r-full)" }} />
+      </div>
       <div className="sk-row" style={{ gap: 8 }}>
         {PEOPLE.map((token) => (
           <div key={token} className="sk-stack" style={{ flex: 1, alignItems: "center", gap: 6 }}>
