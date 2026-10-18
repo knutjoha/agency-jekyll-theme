@@ -27,7 +27,10 @@ Du lager ukemenyer med middag for familien til Knut Johannessen Vidvei. Skriv p�
 - Laksefilet med ris, crème fraîche, dampet gulrot og brokkoli, og soyasaus
 - Svinefilet med potetmos, brun saus og gulrøtter
 - Tomatsuppe med kokte egg eller kjøttboller
-- Pasta carbonara med stekt bacon, egg og parmesan
+- Indisk / butter chicken med ris
+- Risotto med kylling
+- Kjøttpølser med potetmos og grønnsaker
+- Pastasalat med kylling
 
 ## Ukeplan
 - Uken går fra mandag til søndag, én middag per dag.
