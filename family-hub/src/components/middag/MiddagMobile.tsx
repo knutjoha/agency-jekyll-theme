@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from "react";
 import { ChevronRight, GripVertical, Move, Pencil, Plus, RefreshCw, ShoppingBasket } from "lucide-react";
 import { WeekButtons, dayIsToday } from "@/components/middag/DinnerEditor";
 import { ShoppingItemRow } from "@/components/middag/ShoppingItemRow";
+import { useShoppingAdd } from "@/components/middag/use-shopping-add";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
 import { ClearDoneButton } from "@/components/todo/ClearDoneButton";
 import { stagedDrag } from "@/data/middag";
@@ -102,8 +103,7 @@ export function MiddagMobile({
         }
       : null,
   );
-  const [adding, setAdding] = useState(false);
-  const [draftItem, setDraftItem] = useState("");
+  const add = useShoppingAdd(onAddItem);
   const daysRef = useRef<HTMLDivElement>(null);
   const daysState = useRef(days);
   const liftState = useRef(lift);
@@ -226,14 +226,6 @@ export function MiddagMobile({
   function requestDay(dayId: string) {
     if (dragActive.current || liftState.current) return;
     onPlanDay(dayId);
-  }
-
-  function saveItem() {
-    const name = draftItem.trim();
-    setAdding(false);
-    setDraftItem("");
-    if (!name) return;
-    onAddItem(name);
   }
 
   return (
@@ -380,18 +372,16 @@ export function MiddagMobile({
       ) : (
         <ShoppingList
           aisles={aisles}
-          adding={adding}
-          draftItem={draftItem}
+          adding={add.adding}
+          draftItem={add.draftItem}
+          inputRef={add.inputRef}
           onToggle={onToggleItem}
           onRemove={onRemoveItem}
           onClearDone={onClearDone}
-          onDraft={setDraftItem}
-          onAdd={() => setAdding(true)}
-          onCancel={() => {
-            setAdding(false);
-            setDraftItem("");
-          }}
-          onSave={saveItem}
+          onDraft={add.setDraftItem}
+          onAdd={add.begin}
+          onCancel={add.cancel}
+          onSave={add.saveItem}
         />
       )}
     </div>
@@ -515,6 +505,7 @@ function ShoppingList({
   aisles,
   adding,
   draftItem,
+  inputRef,
   onToggle,
   onRemove,
   onClearDone,
@@ -526,6 +517,7 @@ function ShoppingList({
   aisles: GroceryAisle[];
   adding: boolean;
   draftItem: string;
+  inputRef: RefObject<HTMLInputElement | null>;
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
   onClearDone: () => void;
@@ -570,7 +562,7 @@ function ShoppingList({
       </div>
       {adding ? (
         <form onSubmit={(event) => { event.preventDefault(); onSave(); }} style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--r-nested)", background: "var(--tile)", outline: "1.5px solid var(--accent)", outlineOffset: -0.75 }}>
-          <input aria-label="Ny vare" autoFocus value={draftItem} onChange={(event) => onDraft(event.target.value)} style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--text)", fontFamily: "var(--font-body)", fontSize: 14 }} />
+          <input ref={inputRef} aria-label="Ny vare" autoFocus value={draftItem} onChange={(event) => onDraft(event.target.value)} style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--text)", fontFamily: "var(--font-body)", fontSize: 14 }} />
           <button type="button" className="pill-ghost" onClick={onCancel} style={pillBase}>Avbryt</button>
           <button type="submit" className="pill-primary" style={pillBase}>Lagre</button>
         </form>
