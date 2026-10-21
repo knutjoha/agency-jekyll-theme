@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { GripVertical, Move, Pencil, Plus, RefreshCw, Timer } from "lucide-react";
 import { WeekButtons, dayIsToday } from "@/components/middag/DinnerEditor";
 import { ShoppingItemRow } from "@/components/middag/ShoppingItemRow";
+import { useShoppingAdd } from "@/components/middag/use-shopping-add";
 import { ClearDoneButton } from "@/components/todo/ClearDoneButton";
 import { stagedDrag } from "@/data/middag";
 import type { GroceryAisle, Meal, MenuDay } from "@/data/types";
@@ -86,8 +87,7 @@ export function MiddagBoard({
         }
       : null,
   );
-  const [adding, setAdding] = useState(false);
-  const [draftItem, setDraftItem] = useState("");
+  const add = useShoppingAdd(onAddItem);
   const daysRef = useRef<HTMLDivElement>(null);
   const daysState = useRef(days);
   const liftState = useRef(lift);
@@ -211,14 +211,6 @@ export function MiddagBoard({
   function requestDay(dayId: string) {
     if (dragActive.current || liftState.current) return;
     onPlanDay(dayId);
-  }
-
-  function saveItem() {
-    const name = draftItem.trim();
-    setAdding(false);
-    setDraftItem("");
-    if (!name) return;
-    onAddItem(name);
   }
 
   return (
@@ -397,22 +389,23 @@ export function MiddagBoard({
             <ShoppingItemRow key={item.id} item={item} onToggle={onToggleItem} onRemove={onRemoveItem} />
           ))}
         </div>
-        {adding ? (
+        {add.adding ? (
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              saveItem();
+              add.saveItem();
             }}
             style={{ width: "100%", boxSizing: "border-box", display: "flex", flexDirection: "row", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--r-nested)", background: "var(--tile-2)", outline: "1.5px solid var(--accent)", outlineOffset: -0.75 }}
           >
             <input
+              ref={add.inputRef}
               aria-label="Ny vare"
               autoFocus
-              value={draftItem}
-              onChange={(event) => setDraftItem(event.target.value)}
+              value={add.draftItem}
+              onChange={(event) => add.setDraftItem(event.target.value)}
               style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", color: "var(--text)", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal" }}
             />
-            <button type="button" className="pill-ghost" onClick={() => { setAdding(false); setDraftItem(""); }} style={pillBase}>
+            <button type="button" className="pill-ghost" onClick={add.cancel} style={pillBase}>
               Avbryt
             </button>
             <button type="submit" className="pill-primary" style={pillBase}>
@@ -420,7 +413,7 @@ export function MiddagBoard({
             </button>
           </form>
         ) : (
-          <button type="button" onClick={() => setAdding(true)} style={addButton}>
+          <button type="button" onClick={add.begin} style={addButton}>
             <Plus size={18} color="var(--text-muted)" />
             Legg til vare
           </button>
