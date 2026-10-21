@@ -5,6 +5,7 @@ import { useEffect, useRef, type PointerEvent as ReactPointerEvent, type ReactNo
 import { CheckBox } from "@/components/todo/TodoEditor";
 import type { ExtraDraft, RemovedExtra } from "@/components/verdi/use-verdi-actions";
 import { extraDraftValid, formatKr, skipLabel, type VerdiExtra } from "@/lib/verdi/model";
+import { EDIT_SCROLL_MARGIN_TOP, useScrollEditIntoView } from "@/lib/scroll-edit";
 
 const DELETE_BG = "#3A1C1C";
 const DELETE_FG = "#FF6B6B";
@@ -233,11 +234,14 @@ export function DraftEditor({
   onSave: () => void;
   phone?: boolean;
 }) {
+  const scrollRef = useScrollEditIntoView(Boolean(phone));
   return (
     <article
+      ref={scrollRef}
       data-draft="true"
       data-verdi-editor="true"
       style={{
+        scrollMarginTop: EDIT_SCROLL_MARGIN_TOP,
         width: "100%",
         boxSizing: "border-box",
         display: "flex",
@@ -501,8 +505,10 @@ export function ExtraCard({
 }) {
   const editing = Boolean(extra.editing);
   const canOpen = Boolean(onOpen) && !editing && !locked && !pickup;
+  const scrollRef = useScrollEditIntoView(Boolean(phone && editing));
   return (
     <article
+      ref={scrollRef}
       data-extra={extra.id}
       data-done={extra.done ? "true" : undefined}
       data-pool={pool ? "true" : undefined}
@@ -521,6 +527,7 @@ export function ExtraCard({
         }
       }}
       style={{
+        scrollMarginTop: EDIT_SCROLL_MARGIN_TOP,
         width: "100%",
         boxSizing: "border-box",
         display: "flex",
