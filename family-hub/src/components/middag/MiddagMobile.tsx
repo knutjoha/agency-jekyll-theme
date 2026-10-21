@@ -517,7 +517,7 @@ function ShoppingList({
   aisles: GroceryAisle[];
   adding: boolean;
   draftItem: string;
-  inputRef: RefObject<HTMLInputElement | null>;
+  inputRef: RefObject<HTMLInputElement>;
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
   onClearDone: () => void;
