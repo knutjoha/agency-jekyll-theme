@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --experimental-strip-types --import ./scripts/register-ts.mjs --test src/lib/calendar-view.test.ts src/lib/household/map.test.ts src/lib/dinner/week.test.ts src/lib/frist.test.ts src/lib/home-cache.test.ts src/lib/weather.test.ts src/lib/departures.test.ts src/components/shell/navPaths.test.ts src/lib/verdi/model.test.ts src/components/todo/clear-done.test.ts"
+    "test": "node --experimental-strip-types --import ./scripts/register-ts.mjs --test src/lib/calendar-view.test.ts src/lib/household/map.test.ts src/lib/dinner/week.test.ts src/lib/frist.test.ts src/lib/home-cache.test.ts src/lib/weather.test.ts src/lib/departures.test.ts src/components/shell/navPaths.test.ts src/lib/verdi/model.test.ts src/components/todo/clear-done.test.ts src/components/middag/clear-done.test.ts"
   },
   "dependencies": {
     "@cognite/aura": "0.3.5",

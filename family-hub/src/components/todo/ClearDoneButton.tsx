@@ -20,6 +20,7 @@ export function ClearDoneButton({
   return (
     <button
       type="button"
+      data-action="clear-done"
       data-todo-action="clear-done"
       className="pill-ghost"
       disabled={disabled}

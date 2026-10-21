@@ -5,6 +5,7 @@ import { ChevronRight, GripVertical, Move, Pencil, Plus, RefreshCw, ShoppingBask
 import { WeekButtons, dayIsToday } from "@/components/middag/DinnerEditor";
 import { ShoppingItemRow } from "@/components/middag/ShoppingItemRow";
 import { PhoneHeader } from "@/components/shell/PhoneHeader";
+import { ClearDoneButton } from "@/components/todo/ClearDoneButton";
 import { stagedDrag } from "@/data/middag";
 import type { GroceryAisle, Meal, MenuDay, WeatherView } from "@/data/types";
 import { isoWeekNumber, type OsloNow } from "@/lib/oslo";
@@ -60,6 +61,7 @@ export function MiddagMobile({
   onToggleItem,
   onAddItem,
   onRemoveItem,
+  onClearDone,
   onPlanWeek,
   onPlanDay,
   editor,
@@ -82,6 +84,7 @@ export function MiddagMobile({
   onToggleItem: (id: string) => void;
   onAddItem: (name: string) => void;
   onRemoveItem: (id: string) => void;
+  onClearDone: () => void;
   onPlanWeek: () => void;
   onPlanDay: (dayId: string) => void;
   editor: ReactNode;
@@ -381,6 +384,7 @@ export function MiddagMobile({
           draftItem={draftItem}
           onToggle={onToggleItem}
           onRemove={onRemoveItem}
+          onClearDone={onClearDone}
           onDraft={setDraftItem}
           onAdd={() => setAdding(true)}
           onCancel={() => {
@@ -513,6 +517,7 @@ function ShoppingList({
   draftItem,
   onToggle,
   onRemove,
+  onClearDone,
   onDraft,
   onAdd,
   onCancel,
@@ -523,13 +528,41 @@ function ShoppingList({
   draftItem: string;
   onToggle: (id: string) => void;
   onRemove: (id: string) => void;
+  onClearDone: () => void;
   onDraft: (value: string) => void;
   onAdd: () => void;
   onCancel: () => void;
   onSave: () => void;
 }) {
+  const items = aisles.flatMap((aisle) => aisle.items);
+  const doneCount = items.filter((item) => item.done).length;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          padding: "2px 0 0",
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-body)",
+            fontSize: 13,
+            lineHeight: 1,
+            fontWeight: 400,
+            color: "var(--text-muted)",
+            whiteSpace: "nowrap",
+            minWidth: 0,
+          }}
+        >
+          {items.length} varer · {doneCount} kjøpt
+        </div>
+        <ClearDoneButton disabled={doneCount === 0} onClick={onClearDone} />
+      </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {aisles.flatMap((aisle) => aisle.items).map((item) => (
           <ShoppingItemRow key={item.id} item={item} onToggle={onToggle} onRemove={onRemove} />

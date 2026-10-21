@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { collectDone, insertItem, withoutDone } from "@/components/middag/clear-done";
 import { DinnerEditor, type DinnerDraft } from "@/components/middag/DinnerEditor";
 import { MiddagBoard } from "@/components/middag/MiddagBoard";
 import { MiddagMobile } from "@/components/middag/MiddagMobile";
@@ -260,6 +261,22 @@ export function MiddagScreen({
     });
   }
 
+  function clearDone() {
+    const done = collectDone(aisles);
+    if (!done.length) return;
+    const at = weekRef.current;
+    setAisles((current) => withoutDone(current));
+    if (!shoppingPersisted) return;
+    void Promise.all(done.map((entry) => writeJson("/api/shopping", "DELETE", { id: entry.item.id }))).then((results) => {
+      if (weekRef.current !== at) return;
+      results.forEach((ok, index) => {
+        const entry = done[index];
+        if (ok || !entry) return;
+        setAisles((current) => insertItem(current, entry));
+      });
+    });
+  }
+
   async function saveEditor() {
     const current = editorRef.current;
     if (!current || current.saving) return;
@@ -375,6 +392,7 @@ export function MiddagScreen({
     onToggleItem: toggleItem,
     onAddItem: addItem,
     onRemoveItem: removeItem,
+    onClearDone: clearDone,
     onPlanWeek: planWeek,
     onPlanDay: planDay,
   };
