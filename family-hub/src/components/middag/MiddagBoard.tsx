@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { GripVertical, Move, Pencil, Plus, RefreshCw, Timer } from "lucide-react";
 import { WeekButtons, dayIsToday } from "@/components/middag/DinnerEditor";
 import { ShoppingItemRow } from "@/components/middag/ShoppingItemRow";
+import { ClearDoneButton } from "@/components/todo/ClearDoneButton";
 import { stagedDrag } from "@/data/middag";
 import type { GroceryAisle, Meal, MenuDay } from "@/data/types";
 import { isoWeekNumber, type OsloNow } from "@/lib/oslo";
@@ -48,6 +49,7 @@ export function MiddagBoard({
   onToggleItem,
   onAddItem,
   onRemoveItem,
+  onClearDone,
   onPlanWeek,
   onPlanDay,
 }: {
@@ -68,6 +70,7 @@ export function MiddagBoard({
   onToggleItem: (id: string) => void;
   onAddItem: (name: string) => void;
   onRemoveItem: (id: string) => void;
+  onClearDone: () => void;
   onPlanWeek: () => void;
   onPlanDay: (dayId: string) => void;
 }) {
@@ -105,7 +108,9 @@ export function MiddagBoard({
 
   const [year, month, day] = week.split("-").map(Number);
   const weekNumber = isoWeekNumber(year, month, day);
-  const itemCount = aisles.reduce((sum, aisle) => sum + aisle.items.length, 0);
+  const items = aisles.flatMap((aisle) => aisle.items);
+  const itemCount = items.length;
+  const doneCount = items.filter((item) => item.done).length;
 
   function finishDrag() {
     const drag = liftState.current;
@@ -375,10 +380,13 @@ export function MiddagBoard({
           borderRadius: "var(--r-tile)",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
+        <div style={{ display: "flex", flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8, width: "100%", minWidth: 0, flexWrap: "wrap" }}>
           <h2 style={titleStyle}>Handleliste</h2>
-          <div style={{ padding: "6px 12px", borderRadius: "var(--r-full)", background: "var(--tile-2)", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal", fontWeight: 400, color: "var(--text-2)", whiteSpace: "nowrap" }}>
-            {itemCount} varer
+          <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <ClearDoneButton disabled={doneCount === 0} onClick={onClearDone} />
+            <div style={{ padding: "6px 12px", borderRadius: "var(--r-full)", background: "var(--tile-2)", fontFamily: "var(--font-body)", fontSize: 14, lineHeight: "normal", fontWeight: 400, color: "var(--text-2)", whiteSpace: "nowrap" }}>
+              {itemCount} varer
+            </div>
           </div>
         </div>
         <div style={{ fontFamily: "var(--font-body)", fontSize: 13, lineHeight: "normal", fontWeight: 400, color: "var(--text-muted)" }}>
